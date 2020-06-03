@@ -1,4 +1,4 @@
-
+pragma solidity ^0.6.4;
 
 // ERC20 Interface
 interface ERC20 {
@@ -102,15 +102,6 @@ contract VETHERPOOLS {
         return units;
     }
 
-    function _createNewPool(address _pool) internal {
-        arrayPools.push(_pool);
-        poolCount += 1;
-        mapPoolStakers[_pool].push(msg.sender);
-        mapPoolData[_pool].stakerCount += 1;
-        mapMemberData[msg.sender].arrayPools.push(_pool);
-        mapMemberData[msg.sender].poolCount +=1;
-    }
-
     function stakeWithAsset(uint inputAsset1, address asset1, uint inputAsset2, address pool) public payable returns (uint units){
     if (mapPoolData[pool].poolUnits == 0) { 
             require((inputAsset1 > 0 && inputAsset2 > 0), "Must get both assets for new pool");
@@ -137,6 +128,15 @@ contract VETHERPOOLS {
         return _units;
     }
 
+    function _createNewPool(address _pool) internal {
+        arrayPools.push(_pool);
+        poolCount += 1;
+        // mapPoolStakers[_pool].push(msg.sender);
+        // mapPoolData[_pool].stakerCount += 1;
+        mapMemberData[msg.sender].arrayPools.push(_pool);
+        mapMemberData[msg.sender].poolCount +=1;
+    }
+
     function _incrementPoolBalances(uint _vether, uint _asset, address _pool) internal {
         mapPoolData[_pool].vether += _vether;
         mapPoolData[_pool].asset += _asset; 
@@ -152,7 +152,7 @@ contract VETHERPOOLS {
 
     function transferExactUnits(uint units, address pool, address recipient) public returns (bool success){
         require((mapPoolStakerUnits[pool][msg.sender] >= units), "Must own the units");
-        _removeDataForMember(units, pool, msg.sender);
+        _removeDataForMember(msg.sender, units, pool);
         _addDataForMember(recipient, units, pool);
         return true;
     }
@@ -165,23 +165,26 @@ contract VETHERPOOLS {
 
     function transferFromExactUnits(address sender, uint units, address pool, address recipient) public returns (bool success){
         require((mapMemberData[sender].allowance[msg.sender] >= units), "Must own the units");
-        _removeDataForMember(units, pool, sender);
+        _removeDataForMember(sender, units, pool);
         _addDataForMember(recipient, units, pool);
         return true;
     }
 
     function _addDataForMember(address _member, uint _units, address _pool) internal {
+        if( mapPoolStakerUnits[_pool][_member] == 0){
+            mapPoolStakers[_pool].push(msg.sender);
+        }
+        mapPoolData[_pool].stakerCount += 1;
         mapPoolStakerUnits[_pool][_member] += _units;
         // mapMemberData[_member].stakeData.vether += _vether;
         // mapMemberData[_member].stakeData.asset += _asset;
     }
 
-    function _removeDataForMember(uint _units, address _pool, address _member) internal{
+    function _removeDataForMember(address _member, uint _units, address _pool) internal{
         mapPoolStakerUnits[_pool][_member] -= _units;
         if( mapPoolStakerUnits[_pool][_member] == 0){
             mapPoolData[_pool].stakerCount -= 1;
         }
-        mapPoolStakerUnits[_pool][_member] -= _units;
         // mapMemberData[_member].stakeData.vether -= _vether;
         // mapMemberData[_member].stakeData.asset -= _asset;
     }
@@ -201,7 +204,7 @@ contract VETHERPOOLS {
         uint _outputVether = calcShare(units, mapPoolData[pool].poolUnits, mapPoolData[pool].vether);
         uint _outputAsset = calcShare(units, mapPoolData[pool].poolUnits, mapPoolData[pool].asset);
         _decrementPoolBalances(_outputVether, _outputAsset, pool);
-        _removeDataForMember(units, msg.sender, pool);
+        _removeDataForMember(msg.sender, units, pool);
         mapPoolData[pool].poolUnits -= units;
         emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, units);
         _handleTransferOut(pool, _outputAsset, msg.sender);
@@ -239,7 +242,7 @@ contract VETHERPOOLS {
             _outputAsset = calcAsymmetricShare(units, mapPoolData[pool].poolUnits, mapPoolData[pool].asset);
             outputAmount = _outputAsset;
         }
-        _removeDataForMember(units, msg.sender, pool);
+        _removeDataForMember(msg.sender, units, pool);
         mapPoolData[pool].poolUnits -= units;
         mapPoolData[pool].vether -= _outputVether;
         mapPoolData[pool].asset -= _outputAsset;
@@ -325,23 +328,19 @@ contract VETHERPOOLS {
     //==================================================================================//
     // Asset Transfer Functions
 
-    function _handleTransferIn(uint _amount, address _pool) internal {
-        if(_pool == address(0)){
+    function _handleTransferIn(uint _amount, address _asset) internal {
+        if(_asset == address(0)){
             require((_amount == msg.value), "Must get Eth");
-        } else if (_pool == VETHER){
-            ERC20(VETHER).transferFrom(msg.sender, address(this), _amount); 
         } else {
-            ERC20(_pool).transferFrom(msg.sender, address(this), _amount); 
+            ERC20(_asset).transferFrom(msg.sender, address(this), _amount); 
         }
     }
 
-    function _handleTransferOut(address _pool, uint _amount, address payable _recipient) internal {
-        if (_pool == address(0)) {
-            _recipient.transfer(_amount);
-        } else if (_pool == VETHER) {
-            ERC20(VETHER).transfer(_recipient, _amount);
+    function _handleTransferOut(address _asset, uint _amount, address payable _recipient) internal {
+        if (_asset == address(0)) {
+            _recipient.call.value(_amount)(""); 
         } else {
-            ERC20(_pool).transfer(_recipient, _amount);
+            ERC20(_asset).transfer(_recipient, _amount);
         }
     }
 

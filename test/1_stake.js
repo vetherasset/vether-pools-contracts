@@ -22,12 +22,20 @@ var acc0; var acc1; var acc2; var acc3;
 
 contract('VETH', function (accounts) {
     constructor(accounts)
-    stakeETH(_.BN2Str(_._1 * 10), _._01BN)
+    stakeFail()
+    stakeETH(acc0, _.BN2Str(_.one * 10), _.dot1BN, true)
     logETH()
-    stakeETHFromAcc1(_.BN2Str(_._1 * 10), _._01BN)
+    stakeETH(acc1, _.getBN(_.one * 20), _.getBN(_.one/5), false)
     logETH()
-    // stakeToken1(_.BN2Str(_._1 * 10), _.BN2Str(_._1 * 10))
+    unstakeETH(10000, acc1)
+    // unstakeEthAcc0(10000)
+    // stakeETHAcc1
+    // unstakePartial
+    // unstakeExact
+    // stakeToken1(_.BN2Str(_.one * 10), _.BN2Str(_.one * 10))
     // logT1()
+    //stakeWithAsset
+
 
 })
 
@@ -66,79 +74,104 @@ function constructor(accounts) {
         await instanceT1.transfer(acc1, _.getBN(_.BN2Int(supplyT1)/2))
         await instanceVETH.approve(instancePOOLS.address, supply, { from: acc1 })
         await instanceT1.approve(instancePOOLS.address, supplyT1, { from: acc1 })
+
+        console.log(`Acc0: ${acc0}`)
+        console.log(`Acc1: ${acc1}`)
+        console.log(`Pools: ${instancePOOLS.address}`)
     });
 }
 
 
-async function stakeETH(v, a) {
+async function stakeFail() {
 
     it("It should revert with no ETH value", async () => {
-        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(_._1 * 100), _.BN2Str(_._1), _.addressETH));
+        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.addressETH));
     })
 
     it("It should revert with no ETH", async () => {
-        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(0), _.BN2Str(_._1), _.addressETH, { from: acc0, value: _._1BN }));
+        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(0), _.BN2Str(_.one), _.addressETH, { from: acc0, value: _.oneBN }));
     })
 
     it("It should revert with no VETH", async () => {
-        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(_._1 * 100), _.BN2Str(0), _.addressETH, { from: acc0, value: _._1BN }));
-    })
-
-    it("It should stake ETH", async () => {
-        const addr = _.addressETH
-        var V; var A;
-        if((await instancePOOLS.mapPoolData(addr)).poolUnits > 0){
-            A = (await instancePOOLS.mapPoolData(addr)).asset
-            V = (await instancePOOLS.mapPoolData(addr)).vether
-        } else {
-            V = 0; A = 0;
-        }
-        let units = math.calcPoolUnits(v, v+V, a, a+A)
-        
-        let tx = await instancePOOLS.stake(v, a, addr, { from: acc0, value: a })
-
-        assert.equal((await instancePOOLS.arrayPools(0)), addr, 'pools')
-        assert.equal(_.BN2Str((await instancePOOLS.poolCount())), 1, 'poolCount')
-        assert.equal((await instancePOOLS.mapPoolStakers(addr, 0)), acc0, 'stakers')
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolStakerUnits(addr, acc0))), _.BN2Str(units), 'stakerUnits')
-
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vether), v)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).asset), a)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vetherStaked), v)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).assetStaked), a)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount), 1, 'stakerCount')
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).poolUnits), _.BN2Str(units), 'poolUnits')
-
+        var tx1 = await truffleAssert.reverts(instancePOOLS.stake(_.BN2Str(_.one * 100), _.BN2Str(0), _.addressETH, { from: acc0, value: _.oneBN }));
     })
 }
 
-async function stakeETHFromAcc1(v, a) {
+async function stakeETH(acc, v, a, first) {
 
     it("It should stake ETH", async () => {
+        // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
+
         const addr = _.addressETH
         var V; var A;
-        if((await instancePOOLS.mapPoolData(addr)).poolUnits > 0){
-            A = (await instancePOOLS.mapPoolData(addr)).asset
-            V = (await instancePOOLS.mapPoolData(addr)).vether
+        if(first){
+            V = _.getBN(0); 
+            A = _.getBN(0);
+            stakerCount = 0;
+            poolUnits = 0;
         } else {
-            V = 0; A = 0;
+            V = _.getBN((await instancePOOLS.mapPoolData(addr)).vether)
+            A = _.getBN((await instancePOOLS.mapPoolData(addr)).asset)
+            stakerCount = _.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount)
+            poolUnits = _.getBN((await instancePOOLS.mapPoolData(addr)).poolUnits)
         }
-        // let stakers = _.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount)
-        let units = math.calcPoolUnits(v, v+V, a, a+A)
+        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+
+        let units = math.calcPoolUnits(v, V.plus(v), a, A.plus(a))
+        // console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(V.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
         
-        let tx = await instancePOOLS.stake(v, a, addr, { from: acc1, value: a })
+        let tx = await instancePOOLS.stake(v, a, addr, { from: acc, value: a })
 
         assert.equal((await instancePOOLS.arrayPools(0)), addr, 'pools')
         assert.equal(_.BN2Str((await instancePOOLS.poolCount())), 1, 'poolCount')
-        assert.equal((await instancePOOLS.mapPoolStakers(addr, 1)), acc1, 'stakers')
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolStakerUnits(addr, acc1))), _.BN2Str(units), 'stakerUnits')
+        assert.equal((await instancePOOLS.mapPoolStakers(addr, stakerCount)), acc, 'stakers')
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolStakerUnits(addr, acc))), _.BN2Str(units), 'stakerUnits')
 
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vether), v+V)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).asset), a+A)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vetherStaked), v+V)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).assetStaked), a+A)
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount), 2, 'stakerCount')
-        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).poolUnits), _.BN2Str(units), 'poolUnits')
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vether), V.plus(v))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).asset), A.plus(a))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vetherStaked), V.plus(v))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).assetStaked), A.plus(a))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount), +stakerCount + 1, 'stakerCount')
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).poolUnits), units.plus(poolUnits), 'poolUnits')
+
+        assert.equal(_.BN2Str(await instanceVETH.balanceOf(instancePOOLS.address)), _.BN2Str(V.plus(v)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(instancePOOLS.address)), _.BN2Str(A.plus(a)), 'ether balance')
+    })
+}
+
+async function unstakeETH(bp, acc) {
+
+    it("It should unstake ETH from Acc1", async () => {
+        const addr = _.addressETH
+        var V; var A;
+        A = _.getBN((await instancePOOLS.mapPoolData(addr)).asset)
+        V = _.getBN((await instancePOOLS.mapPoolData(addr)).vether)
+
+        // let stakers = _.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount)
+        let totalUnits = _.getBN((await instancePOOLS.mapPoolData(addr)).poolUnits)
+        let stakerUnits = _.getBN((await instancePOOLS.mapPoolStakerUnits(addr, acc1)))
+        let share = (stakerUnits.times(bp)).div(10000)
+        let v = (V.times(stakerUnits)).div(totalUnits)
+        let a = (A.times(stakerUnits)).div(totalUnits)
+        // console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(V.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
+        
+        let tx = await instancePOOLS.unstake(bp, addr, { from: acc})
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputVether), v, 'outputVether')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAsset), a, 'outputAsset')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), share, 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).poolUnits), totalUnits.minus(share), 'poolUnits')
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolStakerUnits(addr, acc))), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vether), V.minus(v))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).asset), A.minus(a))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).vetherStaked), V.minus(v))
+        assert.equal(_.BN2Str((await instancePOOLS.mapPoolData(addr)).assetStaked), A.minus(a))
+        _.assertLog(_.BN2Str(await instanceVETH.balanceOf(instancePOOLS.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(instancePOOLS.address)), _.BN2Str(A.minus(a)), 'ether balance')
+        // assert.equal(_.BN2Str(await instanceVETH.balanceOf(instancePOOLS.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        // assert.equal(_.BN2Str(await web3.eth.getBalance(instancePOOLS.address)), _.BN2Str(A.minus(a)), 'ether balance')
 
     })
 }

@@ -9,7 +9,7 @@ var BigNumber = require('bignumber.js');
 const _ = require('./utils')
 const math = require('./math.js');
 
-const usdPool = { "asset": (2 * _._1).toString(), "mai": (2 * _._1).toString() };
+const usdPool = { "asset": (2 * _.one).toString(), "mai": (2 * _.one).toString() };
 
 async function calcValueInVeth(instance, token) {
   var result;
@@ -17,11 +17,11 @@ async function calcValueInVeth(instance, token) {
   if (token == _.addressETH) {
     assetBal = new BigNumber((await instance.mapAsset_ExchangeData(token)).asset);
     maiBal = new BigNumber((await instance.mapAsset_ExchangeData(token)).vether);
-    result = (_._1BN.times(maiBal)).div(assetBal)
+    result = (_.oneBN.times(maiBal)).div(assetBal)
   } else {
     assetBal = new BigNumber((await instance.mapAsset_ExchangeData(token)).asset);
     maiBal = new BigNumber((await instance.mapAsset_ExchangeData(token)).vether);
-    result = (_._1BN.times(maiBal)).div(assetBal)
+    result = (_.oneBN.times(maiBal)).div(assetBal)
   }
   return result.toFixed()
 }
@@ -29,14 +29,14 @@ async function calcValueInVeth(instance, token) {
 async function calcValueInAsset() {
   var usdBal = new BigNumber(usdPool.asset)
   var maiBal = new BigNumber(usdPool.mai)
-  return ((_._1BN.times(usdBal)).div(maiBal)).toFixed()
+  return ((_.oneBN.times(usdBal)).div(maiBal)).toFixed()
 }
 async function calcEtherPriceInUSD(instance, amount) {
   const _amount = new BigNumber(amount)
   const etherPriceInVeth = new BigNumber(await calcValueInVeth(instance, _.addressETH))
   const maiPriceInUSD = new BigNumber(await calcValueInAsset())
-  const ethPriceInUSD = (maiPriceInUSD.times(etherPriceInVeth)).div(_._1BN)
-  return ((_amount.times(ethPriceInUSD)).div(_._1BN)).toFixed()
+  const ethPriceInUSD = (maiPriceInUSD.times(etherPriceInVeth)).div(_.oneBN)
+  return ((_amount.times(ethPriceInUSD)).div(_.oneBN)).toFixed()
 }
 async function calcEtherPPinVETH(instance, amount) {
   var assetBal = new BigNumber((await instance.mapAsset_ExchangeData(_.addressETH)).asset);
@@ -70,9 +70,9 @@ async function logPool(instance, addressAsset) {
   // const PPInVETH = +(new BigNumber(await calcEtherPPinVETH(instance, amount)));
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
-  console.log(`BALANCES: [ ${assetBalance / (_._1)} | ${assetVETHBalance / (_._1)} ]`)
-  // console.log(`${ValueInVeth / (_._1)} VETH, $${PriceInUSD / (_._1)}`)
-  // console.log('VETH PP from eth:mai   :  ', PPInVETH / (_._1))
+  console.log(`BALANCES: [ ${assetBalance / (_.one)} | ${assetVETHBalance / (_.one)} ]`)
+  // console.log(`${ValueInVeth / (_.one)} VETH, $${PriceInUSD / (_.one)}`)
+  // console.log('VETH PP from eth:mai   :  ', PPInVETH / (_.one))
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, ETH) {
@@ -81,9 +81,9 @@ async function logETHBalances(acc0, acc1, ETH) {
   const addressETHBalance = await web3.eth.getBalance(ETH)
   console.log(" ")
   console.log("----------------------ETH BALANCES---------------------")
-  console.log('acc0:       ', acc0AssetBal / (_._1))
-  console.log('acc1:       ', acc1AssetBal / (_._1))
-  console.log('_.addressETH: ', _.addressETHBalance / (_._1))
+  console.log('acc0:       ', acc0AssetBal / (_.one))
+  console.log('acc1:       ', acc1AssetBal / (_.one))
+  console.log('_.addressETH: ', _.addressETHBalance / (_.one))
 }
 async function logVETHBalances(instance, acc0, acc1, VETHAddress) {
   // instance = await VETH.deployed();
@@ -92,9 +92,9 @@ async function logVETHBalances(instance, acc0, acc1, VETHAddress) {
   const addressVETHBalance = _.BN2Int(await instance.balanceOf(VETHAddress))
   console.log(" ")
   console.log("-----------------------VETH BALANCES--------------------")
-  console.log('acc0:       ', acc0VETHBalance / (_._1))
-  console.log('acc1:       ', acc1VETHBalance / (_._1))
-  console.log('addressVETH: ', addressVETHBalance / (_._1))
+  console.log('acc0:       ', acc0VETHBalance / (_.one))
+  console.log('acc1:       ', acc1VETHBalance / (_.one))
+  console.log('addressVETH: ', addressVETHBalance / (_.one))
 
 }
 
@@ -106,8 +106,8 @@ async function logCDP(instance, CDPAddress) {
   console.log(" ")
   console.log("-----------------------CDP DETAILS----------------------")
   console.log('CDP:        ', CDP)
-  console.log('Collateral: ', Collateral / (_._1))
-  console.log('Debt:       ', Debt / (_._1))
+  console.log('Collateral: ', Collateral / (_.one))
+  console.log('Debt:       ', Debt / (_.one))
 
 }
 

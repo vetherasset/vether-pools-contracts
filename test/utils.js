@@ -10,10 +10,10 @@ var BigNumber = require('bignumber.js');
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 
-const _1 = 1 * 10 ** 18;
-const _1BN = new BigNumber(1 * 10 ** 18)
-const _01BN = new BigNumber(1 * 10 ** 17)
-const _001BN = new BigNumber(1 * 10 ** 16)
+const one = 1 * 10 ** 18;
+const oneBN = new BigNumber(1 * 10 ** 18)
+const dot1BN = new BigNumber(1 * 10 ** 17)
+const dot01BN = new BigNumber(1 * 10 ** 16)
 const addressETH = "0x0000000000000000000000000000000000000000"
 
 function getBN(BN) { return (new BigNumber(BN))}
@@ -26,10 +26,10 @@ function int2BN(int) { return (new BigNumber(int)) }
 
 function int2Str(int) { return ((int).toString()) }
 
-function int2Num(int) { return (int / (_1)) }
+function int2Num(int) { return (int / (one)) }
 
 function ETH(x) {
-  return new BigNumber(x * _1);
+  return new BigNumber(x * one);
 }
 function ETH01(x) {
 
@@ -73,8 +73,8 @@ module.exports = {
   logType
   ,
   addressETH: addressETH,
-  _1:_1,
-  _1BN:_1BN, _01BN:_01BN, _001BN:_001BN
+  one:one,
+  oneBN:oneBN, dot1BN:dot1BN, dot01BN:dot01BN
 
 };
 

@@ -43,7 +43,7 @@ function calcCLPSwap(x, X, Y) {
     return y;
   }
   function calcPoolUnits(v, V, a, A) {
-     // ((M + A) * (m * A + M * a))/(4 * M * A)
+     // ((V + A) * (v * A + V * a))/(4 * V * A)
     const _v = new BigNumber(v);
     const _a = new BigNumber(a);
     const _V = new BigNumber(V);
@@ -52,9 +52,9 @@ function calcCLPSwap(x, X, Y) {
     const numerator2 = _v.times(_A);
     const numerator3 = _V.times(_a);
     const numerator = numerator1.times((numerator2.plus(numerator3)));
-    const denominator = 4 * (_V.times(_A));
+    const denominator = (_V.times(_A)).times(4);
     const _units = numerator.div(denominator);
-    const poolUnits = (new BigNumber(_units)).integerValue(1);
+    const poolUnits = (_units).integerValue(1);
     return poolUnits;
   }
 

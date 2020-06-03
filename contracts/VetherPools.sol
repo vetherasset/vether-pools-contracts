@@ -340,7 +340,8 @@ contract VETHERPOOLS {
         if (_asset == address(0)) {
             _recipient.call.value(_amount)(""); 
         } else {
-            ERC20(_asset).transfer(_recipient, _amount);
+            ERC20(_asset).approve(msg.sender, _amount);
+            ERC20(_asset).transferFrom(address(this), msg.sender, _amount); 
         }
     }
 

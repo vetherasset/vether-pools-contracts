@@ -208,7 +208,7 @@ contract VETHERPOOLS {
         mapPoolData[pool].poolUnits -= units;
         emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, units);
         _handleTransferOut(pool, _outputAsset, msg.sender);
-        _handleTransferOut(pool, _outputVether, msg.sender);
+        _handleTransferOut(VETHER, _outputVether, msg.sender);
         return true;
     }
 
@@ -248,7 +248,7 @@ contract VETHERPOOLS {
         mapPoolData[pool].asset -= _outputAsset;
         emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, units);
         _handleTransferOut(pool, _outputAsset, msg.sender);
-        _handleTransferOut(pool, _outputVether, msg.sender);
+        _handleTransferOut(VETHER, _outputVether, msg.sender);
         return outputAmount;
     }
 
@@ -340,8 +340,8 @@ contract VETHERPOOLS {
         if (_asset == address(0)) {
             _recipient.call.value(_amount)(""); 
         } else {
-            ERC20(_asset).approve(msg.sender, _amount);
-            ERC20(_asset).transferFrom(address(this), msg.sender, _amount); 
+            ERC20(_asset).transfer(msg.sender, _amount);
+            // ERC20(_asset).transferFrom(address(this), msg.sender, _amount); 
         }
     }
 

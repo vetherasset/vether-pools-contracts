@@ -50,6 +50,7 @@ contract VETHERPOOLS {
     mapping(address => mapping(address => uint)) public mapPoolStakerUnits;
     mapping(address => PoolData) public mapPoolData;
     struct PoolData {
+        bool listed;
         uint vether;
         uint asset;
         uint vetherStaked;
@@ -61,7 +62,7 @@ contract VETHERPOOLS {
         uint averageTransaction;
         uint transactionCount;
     }
-
+    
     mapping(address => MemberData) public mapMemberData;
     struct MemberData {
         mapping(address => uint256) allowance;
@@ -92,7 +93,7 @@ contract VETHERPOOLS {
     // Staking functions
 
     function stake(uint inputVether, uint inputAsset, address pool) public payable returns (uint units) {
-        if (mapPoolData[pool].poolUnits == 0) { 
+        if (!mapPoolData[pool].listed) { 
             require((inputAsset > 0 && inputVether > 0), "Must get both assets for new pool");
             _createNewPool(pool);
         }
@@ -103,9 +104,9 @@ contract VETHERPOOLS {
     }
 
     function stakeWithAsset(uint inputAsset1, address asset1, uint inputAsset2, address pool) public payable returns (uint units){
-    if (mapPoolData[pool].poolUnits == 0) { 
+    if (!mapPoolData[pool].listed) { 
             require((inputAsset1 > 0 && inputAsset2 > 0), "Must get both assets for new pool");
-            poolCount += 1;
+            _createNewPool(pool);
         }
         _handleTransferIn(inputAsset1, asset1);
         _handleTransferIn(inputAsset2, pool);
@@ -131,10 +132,7 @@ contract VETHERPOOLS {
     function _createNewPool(address _pool) internal {
         arrayPools.push(_pool);
         poolCount += 1;
-        // mapPoolStakers[_pool].push(msg.sender);
-        // mapPoolData[_pool].stakerCount += 1;
-        mapMemberData[msg.sender].arrayPools.push(_pool);
-        mapMemberData[msg.sender].poolCount +=1;
+        mapPoolData[_pool].listed = true;
     }
 
     function _incrementPoolBalances(uint _vether, uint _asset, address _pool) internal {
@@ -173,6 +171,8 @@ contract VETHERPOOLS {
     function _addDataForMember(address _member, uint _units, address _pool) internal {
         if( mapPoolStakerUnits[_pool][_member] == 0){
             mapPoolStakers[_pool].push(msg.sender);
+            mapMemberData[msg.sender].arrayPools.push(_pool);
+            mapMemberData[msg.sender].poolCount +=1;
         }
         mapPoolData[_pool].stakerCount += 1;
         mapPoolStakerUnits[_pool][_member] += _units;

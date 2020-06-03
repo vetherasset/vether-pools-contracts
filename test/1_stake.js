@@ -28,11 +28,15 @@ contract('VETH', function (accounts) {
     stakeETH(acc1, _.getBN(_.one * 20), _.getBN(_.one/5), false)
     logETH()
     unstakeETH(10000, acc1)
+    logETH()
     unstakeETH(10000, acc0)
-    // unstakeEthAcc0(10000)
-    // stakeETHAcc1
-    // unstakePartial
-    // unstakeExact
+    logETH()
+    stakeETH(acc0, _.BN2Str(_.one * 10), _.dot1BN, true)
+    logETH()
+    unstakeETH(5000, acc0)
+    logETH()
+    unstakeETH(10000, acc0)
+    logETH()
     // stakeToken1(_.BN2Str(_.one * 10), _.BN2Str(_.one * 10))
     // logT1()
     //stakeWithAsset
@@ -100,7 +104,7 @@ async function stakeFail() {
 
 async function stakeETH(acc, v, a, first) {
 
-    it("It should stake ETH", async () => {
+    it(`It should stake ETH from ${acc}`, async () => {
         // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
 
         const addr = _.addressETH
@@ -142,18 +146,17 @@ async function stakeETH(acc, v, a, first) {
 
 async function unstakeETH(bp, acc) {
 
-    it("It should unstake ETH from Acc1", async () => {
+    it(`It should unstake ETH from ${acc}`, async () => {
         const addr = _.addressETH
-        var V; var A;
-        A = _.getBN((await instancePOOLS.mapPoolData(addr)).asset)
-        V = _.getBN((await instancePOOLS.mapPoolData(addr)).vether)
+        var V = _.getBN((await instancePOOLS.mapPoolData(addr)).vether)
+        var A = _.getBN((await instancePOOLS.mapPoolData(addr)).asset)
 
         // let stakers = _.BN2Str((await instancePOOLS.mapPoolData(addr)).stakerCount)
         let totalUnits = _.getBN((await instancePOOLS.mapPoolData(addr)).poolUnits)
         let stakerUnits = _.getBN((await instancePOOLS.mapPoolStakerUnits(addr, acc)))
         let share = (stakerUnits.times(bp)).div(10000)
-        let v = (V.times(stakerUnits)).div(totalUnits)
-        let a = (A.times(stakerUnits)).div(totalUnits)
+        let v = (V.times(share)).div(totalUnits)
+        let a = (A.times(share)).div(totalUnits)
         // console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
         
         let tx = await instancePOOLS.unstake(bp, addr, { from: acc})

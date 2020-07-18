@@ -193,12 +193,12 @@ contract VETHERPOOL {
     //==================================================================================//
     // Upgrade functions
 
-    function upgrade(address pool, address poolContract) public returns (uint units) {
+    function upgrade(address pool, address newContract) public returns (uint units) {
         uint _stakerUnits = mapPoolStakerUnits[pool][msg.sender];
         uint _outputVether = calcShare(_stakerUnits, mapPoolData[pool].poolUnits, mapPoolData[pool].vether);
         uint _outputAsset = calcShare(_stakerUnits, mapPoolData[pool].poolUnits, mapPoolData[pool].asset);
         unstake(10000, pool);
-        units = POOLS(poolContract).stakeForMember(_outputVether, _outputAsset, pool, msg.sender);
+        units = POOLS(newContract).stakeForMember(_outputVether, _outputAsset, pool, msg.sender);
         return units;
     }
 

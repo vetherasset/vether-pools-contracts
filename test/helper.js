@@ -63,18 +63,21 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   return canLiquidate;
 }
 async function logPool(instance, addressAsset) {
-  const assetBalance = _.BN2Asset((await instance.mapPoolData(addressAsset)).asset);
-  const assetVETHBalance = _.BN2Asset((await instance.mapPoolData(addressAsset)).vether);
-  const stakerCount = _.getBN((await instance.mapPoolData(addressAsset)).stakerCount);
-  const poolUnits = _.BN2Asset((await instance.mapPoolData(addressAsset)).poolUnits);
-  const averageFee = _.BN2Asset((await instance.mapPoolData(addressAsset)).averageFee);
-  const averageTransaction = _.BN2Asset((await instance.mapPoolData(addressAsset)).averageTransaction);
-  const transactionCount = _.getBN((await instance.mapPoolData(addressAsset)).transactionCount);
+  const asset = _.BN2Asset((await instance.poolData(addressAsset)).asset);
+  const vether = _.BN2Asset((await instance.poolData(addressAsset)).vether);
+  const assetStaked = _.BN2Asset((await instance.poolData(addressAsset)).assetStaked);
+  const vetherStaked = _.BN2Asset((await instance.poolData(addressAsset)).vetherStaked);
+  const stakerCount = _.getBN((await instance.poolData(addressAsset)).stakerCount);
+  const poolUnits = _.BN2Asset((await instance.poolData(addressAsset)).poolUnits);
+  const fees = _.BN2Asset((await instance.poolData(addressAsset)).fees);
+  const volume = _.BN2Asset((await instance.poolData(addressAsset)).volume);
+  const txCount = _.getBN((await instance.poolData(addressAsset)).txCount);
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
-  console.log(`BALANCES: [ ${assetBalance} | ${assetVETHBalance} ]`)
+  console.log(`BALANCES: [ ${asset} ETH | ${vether} VETH ]`)
+  console.log(`STAKES: [ ${assetStaked} ETH | ${vetherStaked} VETH ]`)
   console.log(`UNITS: [ ${stakerCount} stakers, ${poolUnits} units ]`)
-  console.log(`AVE: [ ${averageFee} fees, ${averageTransaction} txSize, ${transactionCount} txCount ]`)
+  console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logStaker(instance, acc, pool) {

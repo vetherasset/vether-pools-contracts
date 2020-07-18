@@ -69,7 +69,6 @@ contract VetherPools {
     uint public stakerCount;
     mapping(address => MemberData) public memberData;
     struct MemberData {
-        // mapping(address => uint256) allowance;
         address[] arrayPools;
         uint poolCount;
         mapping(address => StakeData) stakeData;
@@ -311,7 +310,6 @@ contract VetherPools {
     // Helper functions
 
     function getStakerUnits(address pool, address member) public view returns(uint stakerUnits){
-        //  return (mapPoolStakerUnits[pool][staker]);
          return (memberData[member].stakeData[pool].stakeUnits);
     }
 
@@ -320,7 +318,6 @@ contract VetherPools {
     }
 
     function getMemberPool(address member, uint index) public view returns(address staker){
-        // uint _member = mapMemberID[member];
         return(memberData[member].arrayPools[index]);
     }
     function getMemberPoolCount(address member) public view returns(uint){

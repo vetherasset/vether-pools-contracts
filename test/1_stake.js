@@ -14,10 +14,11 @@ const help = require('./helper.js');
 
 var VETHER = artifacts.require("./Vether.sol");
 var VETHPOOL = artifacts.require("./VetherPool.sol");
+var VETHPOOL2 = artifacts.require("./VetherPool.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 var TOKEN2 = artifacts.require("./Token2.sol");
 
-var instanceVETH; var instanceVETHPOOL; var instanceT1;
+var instanceVETH; var instanceVETHPOOL; var instanceVETHPOOL2; var instanceT1;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('VETH', function (accounts) {
@@ -48,7 +49,7 @@ contract('VETH', function (accounts) {
     logETH()
     unstakeAsym(5000, acc0, true)
     logETH()
-    unstakeETH(10000, acc0)
+    upgrade(acc0)
     logETH()
 
     // stakeToken1(_.BN2Str(_.one * 10), _.BN2Str(_.one * 10))
@@ -68,6 +69,7 @@ function constructor(accounts) {
 
         instanceVETH = await VETHER.deployed();
         instanceVETHPOOL = await VETHPOOL.deployed();
+        instanceVETHPOOL2 = await VETHPOOL2.deployed();
         instanceT1 = await TOKEN1.deployed();
 
         const vetherAddr = await instanceVETHPOOL.VETHER()
@@ -288,6 +290,58 @@ async function unstakeAsym(bp, acc, toVeth) {
     })
 }
 
+async function upgrade(acc) {
+
+    it(`It should upgrade ETH for ${acc}`, async () => {
+        const addr = _.addressETH
+        var V = _.getBN((await instanceVETHPOOL.mapPoolData(addr)).vether)
+        var A = _.getBN((await instanceVETHPOOL.mapPoolData(addr)).asset)
+
+        // let stakers = _.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).stakerCount)
+        let totalUnits = _.getBN((await instanceVETHPOOL.mapPoolData(addr)).poolUnits)
+        let stakeData = (await instanceVETHPOOL.getMemberStakeData(acc, addr))
+        let stakerUnits = _.getBN(stakeData.stakeUnits)
+        let share = (stakerUnits.times(10000)).div(10000)
+        let v = (V.times(share)).div(totalUnits)
+        let a = (A.times(share)).div(totalUnits)
+        console.log(_.BN2Str(totalUnits), _.BN2Str(stakerUnits), _.BN2Str(share), _.BN2Str(v), _.BN2Str(a))
+        
+        let tx = await instanceVETHPOOL.upgrade(addr, VETHPOOL2, { from: acc})
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputVether), _.BN2Str(v), 'outputVether')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAsset), _.BN2Str(a), 'outputAsset')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+        assert.equal(_.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).poolUnits), totalUnits.minus(share), 'poolUnits')
+        assert.equal(_.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).vether), V.minus(v))
+        assert.equal(_.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).asset), A.minus(a))
+        assert.equal(_.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).vetherStaked), V.minus(v))
+        assert.equal(_.BN2Str((await instanceVETHPOOL.mapPoolData(addr)).assetStaked), _.BN2Str(A.minus(a)))
+        assert.equal(_.BN2Str(await instanceVETH.balanceOf(instanceVETHPOOL.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(instanceVETHPOOL.address)), _.BN2Str(A.minus(a)), 'ether balance')
+
+        let stakeDataAfter = (await instanceVETHPOOL.getMemberStakeData(acc, addr))
+        assert.equal(_.BN2Str(stakeDataAfter.stakeUnits), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+
+        assert.equal((await instanceVETHPOOL2.arrayPools(0)), addr, 'pools')
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.poolCount())), 1, 'poolCount')
+        assert.equal((await instanceVETHPOOL2.mapPoolStakers(addr, stakerCount)), acc, 'stakers')
+
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).vether), V.plus(v))
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).asset), A.plus(a))
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).vetherStaked), V.plus(v))
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).assetStaked), A.plus(a))
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).stakerCount), +stakerCount + 1, 'stakerCount')
+        assert.equal(_.BN2Str((await instanceVETHPOOL2.mapPoolData(addr)).poolUnits), units.plus(poolUnits), 'poolUnits')
+
+        assert.equal(_.BN2Str(await instanceVETH.balanceOf(instanceVETHPOOL2.address)), _.BN2Str(V.plus(v)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(instanceVETHPOOL2.address)), _.BN2Str(A.plus(a)), 'ether balance')
+
+        let stakeData2 = (await instanceVETHPOOL2.getMemberStakeData(acc, addr))
+        assert.equal(stakeData2.vether, v, 'vether')
+        assert.equal(stakeData2.asset, a, 'asset')
+        assert.equal(_.BN2Str(stakeData2.stakeUnits), _.BN2Str(units), 'stakerUnits')
+    })
+}
 
 async function stakeToken1(v, a) {
 

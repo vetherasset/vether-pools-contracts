@@ -63,16 +63,27 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   return canLiquidate;
 }
 async function logPool(instance, addressAsset) {
-  const assetBalance = +(new BigNumber((await instance.mapPoolData(addressAsset)).asset));
-  const assetVETHBalance = +(new BigNumber((await instance.mapPoolData(addressAsset)).vether));
-  // const ValueInVeth = +(new BigNumber(await calcValueInVeth(instance, addressAsset)));
-  // const PriceInUSD = +(new BigNumber(await calcEtherPriceInUSD(instance, amount)));
-  // const PPInVETH = +(new BigNumber(await calcEtherPPinVETH(instance, amount)));
+  const assetBalance = _.BN2Asset((await instance.mapPoolData(addressAsset)).asset);
+  const assetVETHBalance = _.BN2Asset((await instance.mapPoolData(addressAsset)).vether);
+  const stakerCount = _.getBN((await instance.mapPoolData(addressAsset)).stakerCount);
+  const poolUnits = _.BN2Asset((await instance.mapPoolData(addressAsset)).poolUnits);
+  const averageFee = _.BN2Asset((await instance.mapPoolData(addressAsset)).averageFee);
+  const averageTransaction = _.BN2Asset((await instance.mapPoolData(addressAsset)).averageTransaction);
+  const transactionCount = _.getBN((await instance.mapPoolData(addressAsset)).transactionCount);
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
-  console.log(`BALANCES: [ ${assetBalance / (_.one)} | ${assetVETHBalance / (_.one)} ]`)
-  // console.log(`${ValueInVeth / (_.one)} VETH, $${PriceInUSD / (_.one)}`)
-  // console.log('VETH PP from eth:mai   :  ', PPInVETH / (_.one))
+  console.log(`BALANCES: [ ${assetBalance} | ${assetVETHBalance} ]`)
+  console.log(`UNITS: [ ${stakerCount} stakers, ${poolUnits} units ]`)
+  console.log(`AVE: [ ${averageFee} fees, ${averageTransaction} txSize, ${transactionCount} txCount ]`)
+  console.log("-----------------------------------------------------------\n")
+}
+async function logStaker(instance, acc, pool) {
+  let stakeData = (await instance.getMemberStakeData(acc, pool))
+  let poolCount = (await instance.getMemberPoolCount(acc))
+  console.log("\n-------------------Staker Details -------------------")
+  console.log(`ADDRESS: ${acc} | POOL: ${pool}`)
+  console.log(`POOLCOUNT: [ ${poolCount} ]`)
+  console.log(`StakeData: [ ${stakeData.vether} VETH | ${stakeData.asset} ETH ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, ETH) {
@@ -119,6 +130,8 @@ module.exports = {
   logETHBalances: logETHBalances
   ,
   logPool: logPool
+  ,
+  logStaker: logStaker
   ,
   checkLiquidateCDP: checkLiquidateCDP
   ,

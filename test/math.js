@@ -7,7 +7,7 @@ No state
 
 var BigNumber = require('bignumber.js');
 
-function calcCLPSwap(x, X, Y) {
+function calcSwapOutput(x, X, Y) {
     // y = (x * Y * X)/(x + X)^2
     const _x = new BigNumber(x)
     const _X = new BigNumber(X)
@@ -19,7 +19,7 @@ function calcCLPSwap(x, X, Y) {
     return y;
   }
   
-   function calcCLPFee(x, X, Y) {
+   function calcSwapFee(x, X, Y) {
     // y = (x * Y * x) / (x + X)^2
     const _x = new BigNumber(x)
     const _X = new BigNumber(X)
@@ -31,7 +31,7 @@ function calcCLPSwap(x, X, Y) {
     return y;
   }
   
-   function calcCLPLiquidation(x, X, Y) {
+   function calcLiquidation(x, X, Y) {
     // y = (x * Y * (X - x))/(x + X)^2
     const _x = new BigNumber(x)
     const _X = new BigNumber(X)
@@ -42,7 +42,7 @@ function calcCLPSwap(x, X, Y) {
     const y = (new BigNumber(_y)).integerValue(1);
     return y;
   }
-  function calcPoolUnits(v, V, a, A) {
+  function calcStakeUnits(a, A, v, V) {
      // ((V + A) * (v * A + V * a))/(4 * V * A)
     const _v = new BigNumber(v);
     const _a = new BigNumber(a);
@@ -58,18 +58,33 @@ function calcCLPSwap(x, X, Y) {
     return poolUnits;
   }
 
+  function calcAsymmetricShare(s, T, A) {
+    // share = (s * A * (2 * T^2 - 2 * T * s + s^2))/T^3
+    // (part1 * (part2 - part3 + part4)) / part5
+    const part1 = s.times(A);
+    const part2 = T.times(T).times(2);
+    const part3 = T.times(s).times(2);
+    const part4 = s.times(s);
+    const numerator = part1.times(part2.minus(part3).plus(part4));
+    const part5 = T.times(T).times(T);
+    return (numerator.div(part5)).integerValue(1);
+}
+
 module.exports = {
-calcCLPSwap: function(x, X, Y) {
-  return calcCLPSwap(x, X, Y)
+  calcSwapOutput: function(x, X, Y) {
+  return calcSwapOutput(x, X, Y)
 },
-calcCLPFee: function(x, X, Y) {
-  return calcCLPFee(x, X, Y)
+calcSwapFee: function(x, X, Y) {
+  return calcSwapFee(x, X, Y)
 },
-calcCLPLiquidation: function(x, X, Y) {
-  return calcCLPLiquidation(x, X, Y)
+calcLiquidation: function(x, X, Y) {
+  return calcLiquidation(x, X, Y)
 },
-calcPoolUnits: function(a, A, m, M) {
-  return calcPoolUnits(a, A, m, M)
+calcStakeUnits: function(a, A, v, V) {
+  return calcStakeUnits(a, A, v, V)
+},
+calcAsymmetricShare: function(s, T, A) {
+  return calcAsymmetricShare(s, T, A)
 }
 };
 

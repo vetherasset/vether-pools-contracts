@@ -47,6 +47,8 @@ contract VetherPools {
 
     address public VETHER;
     uint public one = 10**18;
+    uint public ETHCAP = 10 * one;
+    uint public DAYCAP = 30*86400;
 
     address[] public arrayPools;
     uint public poolCount;
@@ -54,6 +56,7 @@ contract VetherPools {
     mapping(address => PoolData) public poolData;
     struct PoolData {
         bool listed;
+        uint genesis;
         uint vether;
         uint asset;
         uint vetherStaked;
@@ -85,11 +88,11 @@ contract VetherPools {
     event Swapped(address assetFrom, address assetTo, uint inputAmount, uint transferAmount, uint outPutAmount, uint fee, address recipient);
 
     constructor (address addressVether) public payable {
-        VETHER = addressVether;
+        VETHER = addressVether; //0x95d0c08e59bbc354ee2218da9f82a04d7cdb6fdf;
     }
 
     receive() external payable {
-        buyVETH(msg.value);
+        sellAsset(address(0), msg.value);
     }
 
     //==================================================================================//
@@ -106,6 +109,7 @@ contract VetherPools {
             require((inputAsset > 0 && inputVether > 0), "Must get both assets for new pool");
             _createNewPool(pool);
         }
+        require((poolData[pool].asset + inputAsset <= ETHCAP), "Must not exceed ETH CAP");
         _handleTransferIn(pool, inputAsset);
         _handleTransferIn(VETHER, inputVether);
         units = _stake(inputVether, inputAsset, pool, member);
@@ -116,6 +120,7 @@ contract VetherPools {
         arrayPools.push(_pool);
         poolCount += 1;
         poolData[_pool].listed = true;
+        poolData[_pool].genesis = now;
     }
 
     function _stake(uint _vether, uint _asset, address _pool, address _member) internal returns (uint _units) {
@@ -131,36 +136,43 @@ contract VetherPools {
     //==================================================================================//
     // Unstaking functions
 
+    // Unstake % for self
     function unstake(uint basisPoints, address pool) public returns (bool success) {
+        _unstakeToExact(msg.sender, basisPoints, pool);
+        return true;
+    }
+    // Internal - Convert to Exact with Checks
+    function _unstakeToExact(address payable member, uint basisPoints, address pool) internal returns (bool success) {
         require(pool == address(0), "Must be Eth");
         require(poolData[pool].listed, "Must be listed");
         require((basisPoints > 0 && basisPoints <= 10000), "Must be valid BasisPoints");
-        uint _stakerUnits = memberData[msg.sender].stakeData[pool].stakeUnits;
-        uint _units = calcPart(basisPoints, _stakerUnits);
-        unstakeExact(_units, pool);
+        uint _units = calcPart(basisPoints, memberData[member].stakeData[pool].stakeUnits);
+        _unstake(msg.sender, _units, pool);
         return true;
     }
-
+    // Unstake an exact qty of units
     function unstakeExact(uint units, address pool) public returns (bool success) {
+        _unstake(msg.sender, units, pool);
+        return true;
+    }
+    // Internal - Unstake function
+    function _unstake(address payable member, uint units, address pool) internal returns (bool success) {
         require(pool == address(0), "Must be Eth");
         require(memberData[msg.sender].stakeData[pool].stakeUnits >= units);
         uint _outputVether = calcShare(units, poolData[pool].poolUnits, poolData[pool].vether);
         uint _outputAsset = calcShare(units, poolData[pool].poolUnits, poolData[pool].asset);
-        _decrementPoolBalances(units, _outputVether, _outputAsset, pool);
-        _removeDataForMember(msg.sender, units, pool);
-        emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, units);
-        _handleTransferOut(pool, _outputAsset, msg.sender);
-        _handleTransferOut(VETHER, _outputVether, msg.sender);
+        _handleUnstake(units, _outputVether, _outputAsset, member, pool);
         return true;
     }
 
+    // Unstake % Asymmetrically
     function unstakeAsymmetric(uint basisPoints, address pool, bool toVether) public returns (uint outputAmount){
         require(pool == address(0), "Must be Eth");
         uint _units = calcPart(basisPoints, memberData[msg.sender].stakeData[pool].stakeUnits);
         outputAmount = unstakeExactAsymmetric(_units, pool, toVether);
         return outputAmount;
     }
-
+    // Unstake Exact Asymmetrically
     function unstakeExactAsymmetric(uint units, address pool, bool toVether) public returns (uint outputAmount){
         require(pool == address(0), "Must be Eth");
         require((memberData[msg.sender].stakeData[pool].stakeUnits >= units), "Must own the units");
@@ -176,28 +188,61 @@ contract VetherPools {
             _outputAsset = calcAsymmetricShare(units, poolUnits, poolData[pool].asset);
             outputAmount = _outputAsset;
         }
+        _handleUnstake(units, _outputVether, _outputAsset, msg.sender, pool);
+        return outputAmount;
+    }
+
+    // Internal - handle Unstake
+    function _handleUnstake(uint _units, uint _outputVether, uint _outputAsset, address payable _member, address _pool) internal {
+        _decrementPoolBalances(_units, _outputVether, _outputAsset, _pool);
+        _removeDataForMember(_member, _units, _pool);
+        emit Unstaked(_pool, _member, _outputAsset, _outputVether, _units);
+        _handleTransferOut(_pool, _outputAsset, _member);
+        _handleTransferOut(VETHER, _outputVether, _member);
+    } 
+
+    //==================================================================================//
+    // Upgrade functions
+
+    // Upgrade from this contract to a new one - opt in
+    function upgrade(address newContract) public returns (uint units) {
+        address pool = address(0);
+        uint _stakerUnits = memberData[msg.sender].stakeData[pool].stakeUnits;
+        uint _outputVether = calcShare(_stakerUnits, poolData[pool].poolUnits, poolData[pool].vether);
+        uint _outputAsset = calcShare(_stakerUnits, poolData[pool].poolUnits, poolData[pool].asset);
         _decrementPoolBalances(units, _outputVether, _outputAsset, pool);
         _removeDataForMember(msg.sender, units, pool);
         emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, units);
-        _handleTransferOut(pool, _outputAsset, msg.sender);
-        _handleTransferOut(VETHER, _outputVether, msg.sender);
-        return outputAmount;
+        ERC20(VETHER).approve(newContract, _outputVether);
+        units = POOLS(newContract).stakeForMember(_outputVether, _outputAsset, pool, msg.sender);
+        return units;
+    }
+
+    // Unstake for member after Day Cap
+    function unstakeForMember(address payable member, address pool) public returns (bool success) {
+        require(now > poolData[pool].genesis + DAYCAP, "Must be after Day Cap");
+        _unstakeToExact(member, 10000, pool);
+        return true;
     }
 
     //==================================================================================//
     // Swapping functions
 
-    function buyVETH(uint amount) public payable returns (uint outputAmount) {
-        _handleTransferIn(address(0), amount);
-        outputAmount = _swapAssetToVether(amount, address(0));
-        _handleTransferOut(VETHER, outputAmount, msg.sender);
-        return outputAmount;
-    }
-
-    function sellVETH(uint amount) public payable returns (uint outputAmount) {
+    function buyAsset(address pool, uint amount) public payable returns (uint outputAmount) {
+        require(pool == address(0), "Must be Eth");
+        require(now < poolData[pool].genesis + DAYCAP, "Must not be after Day Cap");
         _handleTransferIn(VETHER, amount);
         outputAmount = _swapVetherToAsset(amount, address(0));
         _handleTransferOut(address(0), outputAmount, msg.sender);
+        return outputAmount;
+    }
+
+    function sellAsset(address pool, uint amount) public payable returns (uint outputAmount) {
+        require(pool == address(0), "Must be Eth");
+        require(now < poolData[pool].genesis + DAYCAP, "Must not be after Day Cap");
+        _handleTransferIn(address(0), amount);
+        outputAmount = _swapAssetToVether(amount, address(0));
+        _handleTransferOut(VETHER, outputAmount, msg.sender);
         return outputAmount;
     }
 
@@ -225,7 +270,7 @@ contract VetherPools {
         return _y;
     }
 
-        //==================================================================================//
+    //==================================================================================//
     // Data Model
 
     function _incrementPoolBalances(uint _units, uint _vether, uint _asset, address _pool) internal {
@@ -299,7 +344,7 @@ contract VetherPools {
     function _handleTransferOut(address _asset, uint _amount, address payable _recipient) internal {
         if(_amount > 0) {
             if (_asset == address(0)) {
-                _recipient.call.value(_amount)(""); 
+                _recipient.call{value:_amount}(""); 
             } else {
                 ERC20(_asset).transfer(_recipient, _amount);
             }

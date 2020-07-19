@@ -63,7 +63,7 @@ function constructor(accounts) {
         assert.equal(poolCount, 0)
         // const pool0 = await vetherPools.arrayPools(poolCount)
         // console.log(pool0)
-        // assert.equal(pool0, _.addressETH)
+        // assert.equal(pool0, _.ETH)
 
         let supply = await vether.totalSupply()
         await vether.approve(vetherPools.address, supply, { from: acc0 })
@@ -92,7 +92,7 @@ async function stakeETH(acc, a, v, first) {
     it(`It should stake ETH from ${acc}`, async () => {
         // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
 
-        const addr = _.addressETH
+        const addr = _.ETH
         var V; var A;
         if(first){
             V = _.getBN(0); 
@@ -132,7 +132,7 @@ async function buyVETH(acc, a) {
 
     it(`It should buy VETH from ${acc}`, async () => {
 
-        const addr = _.addressETH
+        const addr = _.ETH
         const V = _.getBN((await vetherPools.poolData(addr)).vether)
         const A = _.getBN((await vetherPools.poolData(addr)).asset)
         // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
@@ -141,7 +141,7 @@ async function buyVETH(acc, a) {
         let fee = math.calcSwapFee(a, A, V)
         // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
         
-        let tx = await vetherPools.buyVETH(a, { from: acc, value: a })
+        let tx = await vetherPools.sellAsset(addr, a, { from: acc, value: a })
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(a))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(v))
@@ -160,7 +160,7 @@ async function sellVETH(acc, v) {
 
     it(`It should buy VETH from ${acc}`, async () => {
 
-        const addr = _.addressETH
+        const addr = _.ETH
         const V = _.getBN((await vetherPools.poolData(addr)).vether)
         const A = _.getBN((await vetherPools.poolData(addr)).asset)
         // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
@@ -169,7 +169,7 @@ async function sellVETH(acc, v) {
         let fee = math.calcSwapFee(v, V, A)
         // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
         
-        let tx = await vetherPools.sellVETH(v)
+        let tx = await vetherPools.buyAsset(addr, v)
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(v))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(a))
@@ -187,22 +187,22 @@ async function sellVETH(acc, v) {
 
 function logETH() {
     it("logs", async () => {
-        await help.logPool(vetherPools, _.addressETH)
+        await help.logPool(vetherPools, _.ETH)
     })
 }
 
 function checkROI() {
     it("checks ROI", async () => {
-        let poolROI = await vetherPools.getPoolROI(_.addressETH)
+        let poolROI = await vetherPools.getPoolROI(_.ETH)
         console.log('poolROI', _.BN2Str(poolROI))
-        let memberROI0 = await vetherPools.getMemberROI(acc0, _.addressETH)
+        let memberROI0 = await vetherPools.getMemberROI(acc0, _.ETH)
         console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await vetherPools.getMemberROI(acc1, _.addressETH)
+        let memberROI1 = await vetherPools.getMemberROI(acc1, _.ETH)
         console.log('memberROI1', _.BN2Str(memberROI1))
 
-        let assetStaked = _.BN2Str((await vetherPools.poolData(_.addressETH)).assetStaked)
+        let assetStaked = _.BN2Str((await vetherPools.poolData(_.ETH)).assetStaked)
         console.log('assetStaked', _.BN2Asset(assetStaked))
-        let _assetStakedInVether = _.BN2Str((await vetherPools.calcValueInVether(assetStaked, _.addressETH)))
+        let _assetStakedInVether = _.BN2Str((await vetherPools.calcValueInVether(assetStaked, _.ETH)))
         console.log('_assetStakedInVether', _.BN2Asset(_assetStakedInVether))
 
     })

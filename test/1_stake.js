@@ -41,16 +41,24 @@ contract('VETH', function (accounts) {
     logETH()
     stakeETHForMember(acc0, acc1, _.BN2Str(_.one * 10), _.dot1BN, true)
     logETH()
+
+    unstakeFailStart()
+
     unstakeETH(5000, acc0)
     logETH()
     unstakeETH(10000, acc1)
     logETH()
     unstakeAsym(5000, acc0, false)
     logETH()
-    unstakeAsym(5000, acc0, true)
+    unstakeExactAsym(5000, acc0, true)
+
+    unstakeFailExactAsym(10000, acc0, true)
+
     logETH()
     unstakeETH(10000, acc0)
     logETH()
+
+    unstakeFailEnd(acc0)
 
     // stakeToken1(_.BN2Str(_.one * 10), _.BN2Str(_.one * 10))
     // logT1()
@@ -104,15 +112,15 @@ function constructor(accounts) {
 async function stakeFail() {
 
     it("It should revert with no ETH value", async () => {
-        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.addressETH));
+        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(_.one * 100), _.BN2Str(_.one), _.ETH));
     })
 
     it("It should revert with no ETH", async () => {
-        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(0), _.BN2Str(_.one), _.addressETH, { from: acc0, value: _.oneBN }));
+        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(0), _.BN2Str(_.one), _.ETH, { from: acc0, value: _.oneBN }));
     })
 
     it("It should revert with no VETH", async () => {
-        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(_.one * 100), _.BN2Str(0), _.addressETH, { from: acc0, value: _.oneBN }));
+        var tx1 = await truffleAssert.reverts(vetherPools.stake(_.BN2Str(_.one * 100), _.BN2Str(0), _.ETH, { from: acc0, value: _.oneBN }));
     })
 }
 
@@ -121,7 +129,7 @@ async function stakeETH(acc, v, a, first) {
     it(`It should stake ETH from ${acc}`, async () => {
         // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
 
-        const addr = _.addressETH
+        const addr = _.ETH
         var V; var A;
         if(first){
             V = _.getBN(0); 
@@ -166,7 +174,7 @@ async function stakeETHForMember(acc, member, v, a) {
     it(`It should stake ETH for ${member}`, async () => {
         // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
 
-        const addr = _.addressETH
+        const addr = _.ETH
         var V; var A;
         V = _.getBN((await vetherPools.poolData(addr)).vether)
         A = _.getBN((await vetherPools.poolData(addr)).asset)
@@ -202,7 +210,7 @@ async function stakeETHForMember(acc, member, v, a) {
 async function unstakeETH(bp, acc) {
 
     it(`It should unstake ETH for ${acc}`, async () => {
-        const addr = _.addressETH
+        const addr = _.ETH
         var V = _.getBN((await vetherPools.poolData(addr)).vether)
         var A = _.getBN((await vetherPools.poolData(addr)).asset)
 
@@ -245,7 +253,7 @@ async function unstakeETH(bp, acc) {
 async function unstakeAsym(bp, acc, toVeth) {
 
     it(`It should assym unstake from ${acc}`, async () => {
-        const addr = _.addressETH
+        const addr = _.ETH
         var V = _.getBN((await vetherPools.poolData(addr)).vether)
         var A = _.getBN((await vetherPools.poolData(addr)).asset)
 
@@ -285,6 +293,96 @@ async function unstakeAsym(bp, acc, toVeth) {
         // assert.equal(stakeData.vether, v, 'vether')
         // assert.equal(stakeData.asset, a, 'asset')
         assert.equal(_.BN2Str(stakeData2.stakeUnits), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+    })
+}
+
+async function unstakeExactAsym(bp, acc, toVeth) {
+
+    it(`It should assym unstake from ${acc}`, async () => {
+        const addr = _.ETH
+        var V = _.getBN((await vetherPools.poolData(addr)).vether)
+        var A = _.getBN((await vetherPools.poolData(addr)).asset)
+
+        
+        let totalUnits = _.getBN((await vetherPools.poolData(addr)).poolUnits)
+        let stakeData = (await vetherPools.getMemberStakeData(acc, addr))
+        let stakerUnits = _.getBN(stakeData.stakeUnits)
+        let share = (stakerUnits.times(bp)).div(10000)
+
+        let a; let v;
+        if(toVeth){
+            a = 0
+            v = math.calcAsymmetricShare(share, totalUnits, V)
+        } else {
+            a = math.calcAsymmetricShare(share, totalUnits, A)
+            v = 0
+        }
+
+        let tx = await vetherPools.unstakeExactAsymmetric(share, addr, toVeth, { from: acc})
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputVether), _.BN2Str(v), 'outputVether')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAsset), _.BN2Str(a), 'outputAsset')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).poolUnits), totalUnits.minus(share), 'poolUnits')
+
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), V.minus(v))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), A.minus(a))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), V.minus(v))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), _.BN2Str(A.minus(a)))
+        assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
+        // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        // assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
+
+        let stakeData2 = (await vetherPools.getMemberStakeData(acc, addr))
+        // assert.equal(stakeData.vether, v, 'vether')
+        // assert.equal(stakeData.asset, a, 'asset')
+        assert.equal(_.BN2Str(stakeData2.stakeUnits), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+    })
+}
+
+async function unstakeFailExactAsym(bp, acc, toVeth) {
+
+    it(`It should assym unstake from ${acc}`, async () => {
+        const addr = _.ETH
+        
+        let stakeData = (await vetherPools.getMemberStakeData(acc, addr))
+        let stakerUnits = _.getBN(stakeData.stakeUnits)
+        let share = (stakerUnits.times(bp)).div(10000)
+
+        await truffleAssert.reverts(vetherPools.unstakeExactAsymmetric(share, addr, toVeth, { from: acc}))
+    })
+}
+
+async function unstakeFailStart() {
+
+    it("It should revert if unstaking 0 BP", async () => {
+        await truffleAssert.reverts(vetherPools.unstake(0, _.ETH));
+    })
+
+    it("It should revert if unstaking 10001 BP", async () => {
+        await truffleAssert.reverts(vetherPools.unstake('10001', _.ETH));
+    })
+
+    it("It should revert if unstaking higher units", async () => {
+        let stakeData = (await vetherPools.getMemberStakeData(acc0, _.ETH))
+        let units = _.getBN(stakeData.stakeUnits)
+        let unitsMore = units.plus(1)
+        await truffleAssert.reverts(vetherPools.unstakeExact(_.BN2Str(unitsMore), _.ETH));
+    })
+    it("It should revert if unstaking a non-listed pool", async () => {
+        await truffleAssert.reverts(vetherPools.unstake(0, acc2));
+    })
+}
+
+async function unstakeFailEnd(acc) {
+
+    it("It should revert if unstaking unstaked member", async () => {
+        await truffleAssert.reverts(vetherPools.unstake(0, _.ETH, {from: acc}));
+    })
+    it("It should revert if unstaking assym", async () => {
+        await truffleAssert.reverts(vetherPools.unstake(0, _.ETH, {from: acc}));
     })
 }
 
@@ -336,7 +434,7 @@ async function stakeToken1(v, a) {
 
 function logETH() {
     it("logs", async () => {
-        await help.logPool(vetherPools, _.addressETH)
+        await help.logPool(vetherPools, _.ETH)
     })
 }
 
@@ -348,6 +446,6 @@ function logT1() {
 
 function logStaker(acc) {
     it("logs", async () => {
-        await help.logStaker(vetherPools, acc, _.addressETH)
+        await help.logStaker(vetherPools, acc, _.ETH)
     })
 }

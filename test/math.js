@@ -70,6 +70,13 @@ function calcSwapOutput(x, X, Y) {
     return (numerator.div(part5)).integerValue(1);
 }
 
+function calcShare(s, T, A, V){
+  const share = s.div(T)
+  const a = A.mul(share)
+  const v = V.mul(share)
+  return ({'asset':a, 'vether':v})
+}
+
 module.exports = {
   calcSwapOutput: function(x, X, Y) {
   return calcSwapOutput(x, X, Y)
@@ -85,6 +92,9 @@ calcStakeUnits: function(a, A, v, V) {
 },
 calcAsymmetricShare: function(s, T, A) {
   return calcAsymmetricShare(s, T, A)
+},
+calcShare: function(s, T, A, V) {
+  return calcShare(s, T, A, V)
 }
 };
 

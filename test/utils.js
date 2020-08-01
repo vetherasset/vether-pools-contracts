@@ -33,6 +33,9 @@ function int2Num(int) { return (int / (one)) }
 function floorBN(BN){
   return (new BigNumber(BN)).integerValue(1)
 }
+function ceilBN(BN){
+  return ((new BigNumber(BN)).integerValue(1)).plus(1)
+}
 
 function assertLog(thing1, thing2, test) {
   return console.log(thing1, thing2, test)
@@ -52,7 +55,7 @@ module.exports = {
   ,
   int2Num: int2Num
   ,
-  floorBN
+  floorBN, ceilBN
   ,
   assertLog
   ,

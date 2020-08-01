@@ -74,7 +74,7 @@ async function logPool(instance, addressAsset) {
   const txCount = _.getBN((await instance.poolData(addressAsset)).txCount);
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
-  console.log(`BALANCES: [ ${asset} ETH | ${vether} VETH ]`)
+  console.log(`MAPPINGS: [ ${asset} ETH | ${vether} VETH ]`)
   console.log(`STAKES: [ ${assetStaked} ETH | ${vetherStaked} VETH ]`)
   console.log(`UNITS: [ ${stakerCount} stakers, ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
@@ -86,7 +86,7 @@ async function logStaker(instance, acc, pool) {
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${pool}`)
   console.log(`POOLCOUNT: [ ${poolCount} ]`)
-  console.log(`StakeData: [ ${stakeData.vether} VETH | ${stakeData.asset} ETH ]`)
+  console.log(`StakeData: [ ${_.BN2Asset(stakeData.vether)} VETH | ${_.BN2Asset(stakeData.asset)} ETH ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, ETH) {

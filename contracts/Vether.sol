@@ -70,10 +70,12 @@ contract Vether is ERC20 {
     string public symbol;                                       // Symbol of Coin
     uint256 public decimals  = 18;                              // Decimals
     uint256 public override totalSupply  = 1000000 * (10 ** decimals);   // 1,000,000 Total
+    uint public totalFees;
 
     // Mapping
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf
     mapping(address => mapping(address => uint256)) public override allowance;    // Map allowances
+    mapping(address=>bool) public mapAddress_Excluded;                                      // Address->Excluded
     
     // Events
     event Approval(address indexed owner, address indexed spender, uint value); // ERC20
@@ -110,13 +112,32 @@ contract Vether is ERC20 {
 
     // Transfer function which includes the network fee
     function _transfer(address _from, address _to, uint _value) internal {
-        require(_to != address(0));
-        require(balanceOf[_from] >= _value);
-        require(balanceOf[_to].add(_value) >= balanceOf[_to]);                 // catch overflow       
-        
-        balanceOf[_from] = balanceOf[_from].sub(_value);                       // Subtract from sender         
-        balanceOf[_to] = balanceOf[_to].add(_value);                            // Add to receiver
-        
-        emit Transfer(_from, _to, _value);                    // Transaction event            
+        require(balanceOf[_from] >= _value, 'Must not send more than balance');
+        require(balanceOf[_to] + _value >= balanceOf[_to], 'Balance overflow');
+        balanceOf[_from] =balanceOf[_from].sub(_value);
+        uint _fee = _getFee(_from, _to, _value);                                            // Get fee amount
+        balanceOf[_to] += (_value.sub(_fee));                                               // Add to receiver
+        balanceOf[address(this)] += _fee;                                                   // Add fee to self
+        totalFees += _fee;                                                                  // Track fees collected
+        emit Transfer(_from, _to, (_value.sub(_fee)));                                      // Transfer event
+        if (!mapAddress_Excluded[_from] && !mapAddress_Excluded[_to]) {
+            emit Transfer(_from, address(this), _fee);                                      // Fee Transfer event
+        }            
+    }
+    // Calculate Fee amount
+    function _getFee(address _from, address _to, uint _value) private view returns (uint) {
+        if (mapAddress_Excluded[_from] || mapAddress_Excluded[_to]) {
+           return 0;                                                                        // No fee if excluded
+        } else {
+            return (_value / 1000);                                                         // Fee amount = 0.1%
+        }
+    }
+
+    // Allows changing an excluded address
+    function addExcluded(address excluded) external {    
+        if(!mapAddress_Excluded[excluded]){
+            _transfer(msg.sender, address(this), 128);                    // Pay fee of 128 Vether
+            mapAddress_Excluded[excluded] = true;                                           // Add desired address
+        }              
     }
 }

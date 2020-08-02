@@ -438,6 +438,8 @@ async function unstakeETH(bp, acc) {
         assert.equal(_.BN2Str(stakeData2.stakeUnits), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
 
         await help.logPool(vetherPools, _.ETH, 'ETH')
+        let poolROI = await vetherPools.getPoolROI(_.ETH)
+        console.log('poolROI-ETH', _.BN2Str(poolROI))
     })
 }
 
@@ -446,6 +448,8 @@ async function unstakeTKN1(bp, acc) {
     it(`It should unstake TKN1 for ${acc}`, async () => {
         await _unstakeTKN(bp, acc, token1.address)
         await help.logPool(vetherPools, token1.address, 'TKN1')
+        let poolROI = await vetherPools.getPoolROI(_.ETH)
+        console.log('poolROI-TKN1', _.BN2Str(poolROI))
 
     })
 }
@@ -455,6 +459,8 @@ async function unstakeTKN2(bp, acc) {
     it(`It should unstake TKN2 for ${acc}`, async () => {
         await _unstakeTKN(bp, acc, token2.address)
         await help.logPool(vetherPools, token2.address, 'TKN2')
+        let poolROI = await vetherPools.getPoolROI(_.ETH)
+        console.log('poolROI-TKN2', _.BN2Str(poolROI))
 
     })
 }
@@ -527,8 +533,7 @@ function checkROI() {
         let assetStaked = _.BN2Str((await vetherPools.poolData(_.ETH)).assetStaked)
         console.log('assetStaked', _.BN2Asset(assetStaked))
         let _assetStakedInVether = _.BN2Str((await vetherPools.calcValueInVether(assetStaked, _.ETH)))
-        console.log('_assetStakedInVether', _.BN2Asset(_assetStakedInVether))
-
+        console.log('assetStakedInVether', _.BN2Asset(_assetStakedInVether))
     })
 }
 

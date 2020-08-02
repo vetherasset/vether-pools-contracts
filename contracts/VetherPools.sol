@@ -14,7 +14,7 @@ interface ERC20 {
 interface POOLS {
     function stakeForMember(uint inputVether, uint inputAsset, address pool, address member) external payable returns (uint units);
 }
-interface COREMATH {
+interface MATH {
     function calcPart(uint bp, uint total) external pure returns (uint part);
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
@@ -56,11 +56,11 @@ contract VetherPools {
 
     address public VETHER;
     uint public one = 10**18;
-    uint public VETHCAP = 2500 * one;
+    uint public VETHCAP = 10000 * one;
     uint public DAY = 86400;
     uint public DAYCAP = 30*DAY;
 
-    address public M;
+    MATH public math;
 
     address[] public arrayPools;
     mapping(address => PoolData) public poolData;
@@ -101,12 +101,12 @@ contract VetherPools {
         // M = math; //0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2
     }
 
-    function setMath(address math) public {
-        M = math;
+    function setMath(address _math) public {
+        math = MATH(_math);
     }
 
     receive() external payable {
-        sellAsset(msg.value, address(0), address(0));
+        sell(msg.value, address(0), VETHER);
     }
 
     //==================================================================================//
@@ -118,16 +118,17 @@ contract VetherPools {
     }
 
     function stakeForMember(uint inputVether, uint inputAsset, address pool, address member) public payable returns (uint units) {
+        require(pool != VETHER, "Pool must not be Vether");
         if (!poolData[pool].listed) { 
             require((inputAsset > 0 && inputVether > 0), "Must get both assets for new pool");
             _createNewPool(pool);
         }
         uint _allowedVether;
-        if((poolData[pool].vether + inputVether) > VETHCAP){
-            if(poolData[pool].vether > VETHCAP){
+        if((ERC20(VETHER).balanceOf(address(this)) + inputVether) > VETHCAP){
+            if(ERC20(VETHER).balanceOf(address(this)) > VETHCAP){
                 _allowedVether = 0;
             } else {
-                _allowedVether = VETHCAP.sub(poolData[pool].vether);
+                _allowedVether = VETHCAP.sub(ERC20(VETHER).balanceOf(address(this)));
             }
         } else {
             _allowedVether = inputVether;
@@ -147,7 +148,7 @@ contract VetherPools {
     function _stake(uint _vether, uint _asset, address _pool, address _member) internal returns (uint _units) {
         uint _V = poolData[_pool].vether.add(_vether);
         uint _A = poolData[_pool].asset.add(_asset);
-        _units = COREMATH(M).calcStakeUnits(_asset, _A, _vether, _V);   
+        _units = math.calcStakeUnits(_asset, _A, _vether, _V);   
         _incrementPoolBalances(_units, _vether, _asset, _pool);                                                  
         _addDataForMember(_member, _units, _vether, _asset, _pool);
         emit Staked(_pool, _member, _asset, _vether, _units);
@@ -160,7 +161,7 @@ contract VetherPools {
     // Unstake % for self
     function unstake(uint basisPoints, address pool) public returns (bool success) {
         require((basisPoints > 0 && basisPoints <= 10000), "Must be valid BasisPoints");
-        uint _units = COREMATH(M).calcPart(basisPoints, memberData[msg.sender].stakeData[pool].stakeUnits);
+        uint _units = math.calcPart(basisPoints, memberData[msg.sender].stakeData[pool].stakeUnits);
         unstakeExact(_units, pool);
         return true;
     }
@@ -168,15 +169,15 @@ contract VetherPools {
     // Unstake an exact qty of units
     function unstakeExact(uint units, address pool) public returns (bool success) {
         require(units <= memberData[msg.sender].stakeData[pool].stakeUnits, "Must own the units");
-        uint _outputVether = COREMATH(M).calcShare(units, poolData[pool].poolUnits, poolData[pool].vether);
-        uint _outputAsset = COREMATH(M).calcShare(units, poolData[pool].poolUnits, poolData[pool].asset);
+        uint _outputVether = math.calcShare(units, poolData[pool].poolUnits, poolData[pool].vether);
+        uint _outputAsset = math.calcShare(units, poolData[pool].poolUnits, poolData[pool].asset);
         _handleUnstake(units, _outputVether, _outputAsset, msg.sender, pool);
         return true;
     }
 
     // Unstake % Asymmetrically
     function unstakeAsymmetric(uint basisPoints, address pool, bool toVether) public returns (uint outputAmount){
-        uint _units = COREMATH(M).calcPart(basisPoints, memberData[msg.sender].stakeData[pool].stakeUnits);
+        uint _units = math.calcPart(basisPoints, memberData[msg.sender].stakeData[pool].stakeUnits);
         outputAmount = unstakeExactAsymmetric(_units, pool, toVether);
         return outputAmount;
     }
@@ -187,12 +188,12 @@ contract VetherPools {
         require(units < _poolUnits, "Must not be last staker");
         uint _outputVether; uint _outputAsset; 
         if(toVether){
-            _outputVether = COREMATH(M).calcAsymmetricShare(units, _poolUnits, poolData[pool].vether);
+            _outputVether = math.calcAsymmetricShare(units, _poolUnits, poolData[pool].vether);
             _outputAsset = 0;
             outputAmount = _outputVether;
         } else {
             _outputVether = 0;
-            _outputAsset = COREMATH(M).calcAsymmetricShare(units, _poolUnits, poolData[pool].asset);
+            _outputAsset = math.calcAsymmetricShare(units, _poolUnits, poolData[pool].asset);
             outputAmount = _outputAsset;
         }
         _handleUnstake(units, _outputVether, _outputAsset, msg.sender, pool);
@@ -214,8 +215,8 @@ contract VetherPools {
     // Upgrade from this contract to a new one - opt in
     function upgrade(address payable newContract, address pool) public {
         uint _units = memberData[msg.sender].stakeData[pool].stakeUnits;
-        uint _outputVether = COREMATH(M).calcShare(_units, poolData[pool].poolUnits, poolData[pool].vether);
-        uint _outputAsset = COREMATH(M).calcShare(_units, poolData[pool].poolUnits, poolData[pool].asset);
+        uint _outputVether = math.calcShare(_units, poolData[pool].poolUnits, poolData[pool].vether);
+        uint _outputAsset = math.calcShare(_units, poolData[pool].poolUnits, poolData[pool].asset);
         _decrementPoolBalances(_units, _outputVether, _outputAsset, pool);
         _removeDataForMember(msg.sender, _units, pool);
         emit Unstaked(pool, msg.sender, _outputAsset, _outputVether, _units);
@@ -231,33 +232,35 @@ contract VetherPools {
     //==================================================================================//
     // Swapping functions
 
-    function buyAsset(uint amount, address asset, address pool) public payable returns (uint outputAmount, uint fee) {
-        require(now < poolData[pool].genesis + DAYCAP, "Must not be after Day Cap");
+    function buy(uint amount, address asset, address pool) public payable returns (uint outputAmount, uint fee) {
+        require(now < poolData[address(0)].genesis + DAYCAP, "Must not be after Day Cap");
         require(asset != pool, "Asset must not be the pool");
+        require(pool != VETHER, "Asset must not be Vether");
         uint _actualAmount = _handleTransferIn(asset, amount);
         if(asset == VETHER){
-            // vether to asset
+            // buy asset with vether (single swap)
             (outputAmount, fee) = _swapVetherToAsset(_actualAmount, pool);
         } else {
-            // asset to asset
+            // buy vether, buy asset with vether (double swap)
             (outputAmount, fee) = _swapAssetToAsset(_actualAmount, asset, pool);
         }
         _handleTransferOut(pool, outputAmount, msg.sender);
         return (outputAmount, fee);
     }
 
-    function sellAsset(uint amount, address asset, address pool) public payable returns (uint outputAmount, uint fee) {
-        require(now < poolData[pool].genesis + DAYCAP, "Must not be after Day Cap");
-        require(asset != VETHER, "Asset must not be Vether");
+    function sell(uint amount, address pool, address asset) public payable returns (uint outputAmount, uint fee) {
+        require(now < poolData[address(0)].genesis + DAYCAP, "Must not be after Day Cap");
+        require(asset != pool, "Asset must not be the pool");
+        require(pool != VETHER, "Asset must not be Vether");
         uint _actualAmount = _handleTransferIn(asset, amount);
-        if(asset == pool){
-            // asset to vether
+        if(asset == VETHER){
+            // sell asset to vether
             (outputAmount, fee) = _swapAssetToVether(_actualAmount, pool);
             _handleTransferOut(VETHER, outputAmount, msg.sender);
         } else {
-            // asset to asset
-            (outputAmount, fee) = _swapAssetToAsset(_actualAmount, asset, pool);
-            _handleTransferOut(pool, outputAmount, msg.sender);
+            // sell asset to vether, buy asset with vether (double swap)
+            (outputAmount, fee) = _swapAssetToAsset(_actualAmount, pool, asset);
+            _handleTransferOut(asset, outputAmount, msg.sender);
         }
         return (outputAmount, fee);
     }
@@ -265,8 +268,8 @@ contract VetherPools {
     function _swapVetherToAsset(uint _x, address _pool) internal returns (uint _y, uint _fee){
         uint _X = poolData[_pool].vether;
         uint _Y = poolData[_pool].asset;
-        _y =  COREMATH(M).calcSwapOutput(_x, _X, _Y);
-        _fee = COREMATH(M).calcSwapFee(_x, _X, _Y);
+        _y =  math.calcSwapOutput(_x, _X, _Y);
+        _fee = math.calcSwapFee(_x, _X, _Y);
         poolData[_pool].vether = poolData[_pool].vether.add(_x);
         poolData[_pool].asset = poolData[_pool].asset.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, _pool, false);
@@ -277,8 +280,8 @@ contract VetherPools {
     function _swapAssetToVether(uint _x, address _pool) internal returns (uint _y, uint _fee){
         uint _X = poolData[_pool].asset;
         uint _Y = poolData[_pool].vether;
-        _y =  COREMATH(M).calcSwapOutput(_x, _X, _Y);
-        _fee = COREMATH(M).calcSwapFee(_x, _X, _Y);
+        _y =  math.calcSwapOutput(_x, _X, _Y);
+        _fee = math.calcSwapFee(_x, _X, _Y);
         poolData[_pool].asset = poolData[_pool].asset.add(_x);
         poolData[_pool].vether = poolData[_pool].vether.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, _pool, true);
@@ -290,7 +293,7 @@ contract VetherPools {
         (uint _y, uint _feey) = _swapAssetToVether(_x, _pool1);
         (uint _zz, uint _feez) = _swapVetherToAsset(_y, _pool2);
         _fee = _feez + calcValueInAsset(_feey, _pool2);
-        emit Swapped(_pool1, _pool2, _x, _y, _z, _fee, msg.sender);
+        emit Swapped(_pool1, _pool2, _x, _y, _zz, _fee, msg.sender);
         return (_zz, _fee);
     }
 
@@ -306,8 +309,8 @@ contract VetherPools {
     }
 
     function _decrementPoolBalances(uint _units, uint _vether, uint _asset, address _pool) internal {
-        uint _unstakedVether = COREMATH(M).calcShare(_vether, poolData[_pool].vether, poolData[_pool].vetherStaked);
-        uint _unstakedAsset = COREMATH(M).calcShare(_asset, poolData[_pool].asset, poolData[_pool].assetStaked);
+        uint _unstakedVether = math.calcShare(_vether, poolData[_pool].vether, poolData[_pool].vetherStaked);
+        uint _unstakedAsset = math.calcShare(_asset, poolData[_pool].asset, poolData[_pool].assetStaked);
         poolData[_pool].vetherStaked = poolData[_pool].vetherStaked.sub(_unstakedVether);
         poolData[_pool].assetStaked = poolData[_pool].assetStaked.sub(_unstakedAsset); 
         poolData[_pool].poolUnits = poolData[_pool].poolUnits.sub(_units);
@@ -330,8 +333,8 @@ contract VetherPools {
 
     function _removeDataForMember(address _member, uint _units, address _pool) internal{
         uint stakeUnits = memberData[_member].stakeData[_pool].stakeUnits;
-        uint _vether = COREMATH(M).calcShare(_units, stakeUnits, memberData[_member].stakeData[_pool].vether);
-        uint _asset = COREMATH(M).calcShare(_units, stakeUnits, memberData[_member].stakeData[_pool].asset);
+        uint _vether = math.calcShare(_units, stakeUnits, memberData[_member].stakeData[_pool].vether);
+        uint _asset = math.calcShare(_units, stakeUnits, memberData[_member].stakeData[_pool].asset);
         memberData[_member].stakeData[_pool].stakeUnits = memberData[_member].stakeData[_pool].stakeUnits.sub(_units);
         memberData[_member].stakeData[_pool].vether = memberData[_member].stakeData[_pool].vether.sub(_vether);
         memberData[_member].stakeData[_pool].asset = memberData[_member].stakeData[_pool].asset.sub(_asset);
@@ -394,12 +397,12 @@ contract VetherPools {
     }
     function getStakerShareVether(address member, address pool) public view returns(uint vether){
         uint _units = memberData[member].stakeData[pool].stakeUnits;
-        vether = COREMATH(M).calcShare(_units, poolData[pool].poolUnits, poolData[pool].vether);
+        vether = math.calcShare(_units, poolData[pool].poolUnits, poolData[pool].vether);
         return vether;
     }
     function getStakerShareAsset(address member, address pool) public view returns(uint asset){
         uint _units = memberData[member].stakeData[pool].stakeUnits;
-        asset = COREMATH(M).calcShare(_units, poolData[pool].poolUnits, poolData[pool].asset);
+        asset = math.calcShare(_units, poolData[pool].poolUnits, poolData[pool].asset);
         return asset;
     }
 
@@ -470,12 +473,12 @@ contract VetherPools {
    function calcAssetPPinVether(uint amount, address pool) public view returns (uint _output){
         uint _asset = poolData[pool].asset;
         uint _vether = poolData[pool].vether;
-        return  COREMATH(M).calcSwapOutput(amount, _asset, _vether);
+        return  math.calcSwapOutput(amount, _asset, _vether);
    }
 
     function calcVetherPPinAsset(uint amount, address pool) public view returns (uint _output){
         uint _asset = poolData[pool].asset;
         uint _vether = poolData[pool].vether;
-        return  COREMATH(M).calcSwapOutput(amount, _vether, _asset);
+        return  math.calcSwapOutput(amount, _vether, _asset);
    }
 }

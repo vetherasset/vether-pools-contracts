@@ -271,7 +271,7 @@ async function swapETHToVETH(acc, a) {
 }
 
 async function swapTKN1ToETH(acc, x) {
-    it(`It should buy ETH with TKN1 from ${acc}`, async () => {
+    it(`It should swap TKN1 to ETH from ${acc}`, async () => {
         await _swapTKNToETH(acc, x, token1.address)
         await help.logPool(vetherPools, token1.address, 'TKN1')
 
@@ -279,8 +279,8 @@ async function swapTKN1ToETH(acc, x) {
 }
 
 async function swapTKN2ToETH(acc, x) {
-    it(`It should buy ETH with TKN2 from ${acc}`, async () => {
-        _swapTKNToETH(acc, x, token2.address)
+    it(`It should swap TKN2 to ETH from ${acc}`, async () => {
+        await _swapTKNToETH(acc, x, token2.address)
         await help.logPool(vetherPools, token2.address, 'TKN2')
 
     })

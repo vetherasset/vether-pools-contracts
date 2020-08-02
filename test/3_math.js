@@ -14,8 +14,9 @@ const help = require('./helper.js');
 
 var VETHER = artifacts.require("./Vether.sol");
 var VETHPOOL = artifacts.require("./VetherPools.sol");
+var MATH = artifacts.require("MathContract");
 
-var vether;  var vetherPools;
+var vether;  var vetherPools; var coreMath;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('VETH', function (accounts) {
@@ -33,6 +34,8 @@ function constructor(accounts) {
 
         vether = await VETHER.new()
         vetherPools = await VETHPOOL.new(vether.address)
+        coreMath = await MATH.new()
+        await vetherPools.setMath(coreMath.address)
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
         console.log(`Pools: ${vetherPools.address}`)
@@ -49,28 +52,28 @@ async function mathCheck() {
     const T = _.getBN(10000)
 
     it(`Checks staking`, async () => {
-        let veth = await vetherPools.calcStakeUnits(a, A.plus(a), v, V.plus(v))
+        let veth = await coreMath.calcStakeUnits(a, A.plus(a), v, V.plus(v))
         let js = math.calcStakeUnits(a, A.plus(a), v, V.plus(v))
         assert.equal(_.BN2Str(veth), _.BN2Str(js))
         assert.equal(_.BN2Str(veth), '5500000000000000000')
     })
 
     it(`Checks assym withdrawal`, async () => {
-        let veth = await vetherPools.calcAsymmetricShare(s, T, V)
+        let veth = await coreMath.calcAsymmetricShare(s, T, V)
         let js = math.calcAsymmetricShare(s, T, V)
         assert.equal(_.BN2Str(veth), _.BN2Str(js))
         assert.equal(_.BN2Str(veth), '18100000000000000000')
     })
 
     it(`Checks swapping`, async () => {
-        let veth = await vetherPools.calcSwapOutput(a, A, V)
+        let veth = await coreMath.calcSwapOutput(a, A, V)
         let js = math.calcSwapOutput(a, A, V)
         assert.equal(_.BN2Str(veth), _.BN2Str(js))
         assert.equal(_.BN2Str(veth), '8264462809917355371')
     })
 
     it(`Checks swapping fee`, async () => {
-        let veth = await vetherPools.calcSwapFee(a, A, V)
+        let veth = await coreMath.calcSwapFee(a, A, V)
         let js = math.calcSwapFee(a, A, V)
         assert.equal(_.BN2Str(veth), _.BN2Str(js))
         assert.equal(_.BN2Str(veth), '826446280991735537')
@@ -81,7 +84,7 @@ async function mathCheck() {
         const a = _.getBN(1000000000000000000)
         const A = _.getBN(100000000000000000)
         const V = _.getBN(10000000000000000000)
-        let veth = await vetherPools.calcSwapFee(a, A, V)
+        let veth = await coreMath.calcSwapFee(a, A, V)
         let js = math.calcSwapFee(a, A, V)
         assert.equal(_.BN2Str(veth), _.BN2Str(js))
         assert.equal(_.BN2Str(veth), '8264462809917355371')

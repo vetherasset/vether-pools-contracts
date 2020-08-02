@@ -67,7 +67,7 @@ async function logPool(instance, addressAsset, ticker) {
   const vether = _.BN2Asset((await instance.poolData(addressAsset)).vether);
   const assetStaked = _.BN2Asset((await instance.poolData(addressAsset)).assetStaked);
   const vetherStaked = _.BN2Asset((await instance.poolData(addressAsset)).vetherStaked);
-  const stakerCount = _.getBN((await instance.poolData(addressAsset)).stakerCount);
+  const stakerCount = _.getBN((await instance.getPoolStakerCount(addressAsset)));
   const poolUnits = _.BN2Asset((await instance.poolData(addressAsset)).poolUnits);
   const fees = _.BN2Asset((await instance.poolData(addressAsset)).fees);
   const volume = _.BN2Asset((await instance.poolData(addressAsset)).volume);

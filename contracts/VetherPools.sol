@@ -223,6 +223,7 @@ contract VetherPools {
         if(pool == address(0)){
             POOLS(newContract).stakeForMember{value:_outputAsset}(_outputVether, _outputAsset, pool, msg.sender);
         } else {
+            ERC20(pool).approve(newContract, _outputAsset);
             POOLS(newContract).stakeForMember(_outputVether, _outputAsset, pool, msg.sender);
         }
     }

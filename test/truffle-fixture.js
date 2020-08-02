@@ -1,6 +1,7 @@
 var Token1 = artifacts.require("./Token1.sol") 
 var Token2 = artifacts.require("./Token2.sol") 
 var Vether = artifacts.require("./Vether.sol") 
+var Math = artifacts.require("./Math.sol") 
 var Pools = artifacts.require("./VetherPool.sol");
 var Pools2 = artifacts.require("./VetherPool.sol");
 

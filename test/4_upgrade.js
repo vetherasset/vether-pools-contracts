@@ -68,6 +68,8 @@ function constructor(accounts) {
         await vether.approve(vetherPools.address, supply, { from: acc1 })
         await vether.approve(vetherPools2.address, supply, { from: acc0 })
         await vether.approve(vetherPools2.address, supply, { from: acc1 })
+        await vether.addExcluded(vetherPools.address, { from: acc1 })
+        await vether.addExcluded(vetherPools2.address, { from: acc1 })
 
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
@@ -107,10 +109,10 @@ async function stakeETH(acc, a, v, first) {
         assert.equal(_.BN2Str((await vetherPools.poolCount())), 1, 'poolCount')
         assert.equal((await vetherPools.mapPoolStakers(addr, stakerCount)), acc, 'stakers')
 
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), V.plus(v))
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), A.plus(a))
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), V.plus(v))
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), A.plus(a))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), _.BN2Str(V.plus(v)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), _.BN2Str(A.plus(a)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), _.BN2Str(V.plus(v)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), _.BN2Str(A.plus(a)))
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).stakerCount), +stakerCount + 1, 'stakerCount')
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).poolUnits), units.plus(poolUnits), 'poolUnits')
 

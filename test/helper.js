@@ -62,7 +62,7 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   }
   return canLiquidate;
 }
-async function logPool(instance, addressAsset) {
+async function logPool(instance, addressAsset, ticker) {
   const asset = _.BN2Asset((await instance.poolData(addressAsset)).asset);
   const vether = _.BN2Asset((await instance.poolData(addressAsset)).vether);
   const assetStaked = _.BN2Asset((await instance.poolData(addressAsset)).assetStaked);
@@ -74,8 +74,8 @@ async function logPool(instance, addressAsset) {
   const txCount = _.getBN((await instance.poolData(addressAsset)).txCount);
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
-  console.log(`MAPPINGS: [ ${asset} ETH | ${vether} VETH ]`)
-  console.log(`STAKES: [ ${assetStaked} ETH | ${vetherStaked} VETH ]`)
+  console.log(`MAPPINGS: [ ${asset} ${ticker} | ${vether} VETH ]`)
+  console.log(`STAKES: [ ${assetStaked}  ${ticker} | ${vetherStaked} VETH ]`)
   console.log(`UNITS: [ ${stakerCount} stakers, ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")

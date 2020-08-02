@@ -15,6 +15,12 @@ Swapping
 * Swap from any asset to any asset
 
 
+
+1000000000000000000 // 10**18
+1000000000000000000000000 //1m
+0x0000000000000000000000000000000000000000
+
+
 ### ERC-20
 
 ### Vether Public Get Methods

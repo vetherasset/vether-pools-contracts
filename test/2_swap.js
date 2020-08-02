@@ -13,33 +13,45 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var VETHER = artifacts.require("./Vether.sol");
+var MATH = artifacts.require("./Math.sol");
 var VETHPOOL = artifacts.require("./VetherPools.sol");
-// var TOKEN1 = artifacts.require("./Token1.sol");
-// var TOKEN2 = artifacts.require("./Token2.sol");
+var TOKEN1 = artifacts.require("./Token1.sol");
+var TOKEN2 = artifacts.require("./Token2.sol");
 
-var vether; var vetherPools; //var instanceT1;
+var vether; var vetherPools; var token1;  var token2; var Math
 var acc0; var acc1; var acc2; var acc3;
 
 contract('VETH', function (accounts) {
     constructor(accounts)
-    stakeETH(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true)
+    stakeETH(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 1)
     logETH()
 
-    buyVETH(acc0, _.BN2Str(_.one * 1))
+    // Single swap
+    buyETHWithVETH(acc0, _.BN2Str(_.one * 1))
     logETH()
-    sellVETH(acc0, _.BN2Str(_.one * 10))
+    sellEthToVETH(acc0, _.BN2Str(_.one * 10))
     logETH()
     checkROI()
 
-    buyVETH(acc0, _.BN2Str(_.one * 1))
+    stakeTKN1(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 2)
+    logTKN1()
+
+    // // Double swap
+    buyETHWithTKN1(acc0, _.BN2Str(_.one * 1))
+    logTKN1()
     logETH()
-    sellVETH(acc0, _.BN2Str(_.one * 10))
+    sellEthToTKN1(acc0, _.BN2Str(_.one * 10))
     logETH()
     checkROI()
 
-    buyVETH(acc0, _.BN2Str(_.one * 1))
+    stakeTKN2(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 3)
+    logTKN2()
+
+    // // Double swap back
+    buyETHWithTKN2(acc0, _.BN2Str(_.one * 1))
+    logTKN1()
     logETH()
-    sellVETH(acc0, _.BN2Str(_.one * 10))
+    sellEthToTKN2(acc0, _.BN2Str(_.one * 10))
     logETH()
     checkROI()
 
@@ -56,8 +68,10 @@ function constructor(accounts) {
     it("constructor events", async () => {
 
         vether = await VETHER.new()
-        vetherPools = await VETHPOOL.new(vether.address)
-        // instanceT1 = await TOKEN1.deployed();
+        Math = await MATH.new()
+        vetherPools = await VETHPOOL.new(vether.address, Math.address)
+        token1 = await TOKEN1.new();
+        token2 = await TOKEN1.new();
 
         const vetherAddr = await vetherPools.VETHER()
         assert.equal(vetherAddr, vether.address, "address is correct")
@@ -74,14 +88,21 @@ function constructor(accounts) {
         assert.equal(_.BN2Str(allowance), _.BN2Str(supply), 'allowance is correct')
         await vether.transfer(acc1, _.getBN(_.BN2Int(supply)/2))
         await vether.approve(vetherPools.address, supply, { from: acc1 })
+        await vether.addExcluded(vetherPools.address, { from: acc1 })
         
 
-        // let supplyT1 = await instanceT1.totalSupply()
-        // await instanceT1.approve(vetherPools.address, supplyT1, { from: acc0 })
-        // let allowanceT1 = await instanceT1.allowance(acc0, vetherPools.address)
-        // assert.equal(_.BN2Str(allowance), _.BN2Str(supplyT1), 'allowance is correct')
-        // await instanceT1.transfer(acc1, _.getBN(_.BN2Int(supplyT1)/2))
-        // await instanceT1.approve(vetherPools.address, supplyT1, { from: acc1 })
+        let supplyT1 = await token1.totalSupply()
+        await token1.approve(vetherPools.address, supplyT1, { from: acc0 })
+        let allowanceT1 = await token1.allowance(acc0, vetherPools.address)
+        assert.equal(_.BN2Str(allowanceT1), _.BN2Str(supplyT1), 'allowance is correct')
+        await token1.transfer(acc1, _.getBN(_.BN2Int(supplyT1)/2))
+        await token1.approve(vetherPools.address, supplyT1, { from: acc1 })
+
+        await token2.approve(vetherPools.address, supplyT1, { from: acc0 })
+        let allowanceT2 = await token2.allowance(acc0, vetherPools.address)
+        assert.equal(_.BN2Str(allowanceT2), _.BN2Str(supplyT1), 'allowance is correct')
+        await token2.transfer(acc1, _.getBN(_.BN2Int(supplyT1)/2))
+        await token2.approve(vetherPools.address, supplyT1, { from: acc1 })
 
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
@@ -91,13 +112,70 @@ function constructor(accounts) {
 }
 
 
-async function stakeETH(acc, a, v, first) {
-
+async function stakeETH(acc, a, v, first, count) {
     it(`It should stake ETH from ${acc}`, async () => {
-        // console.log(`testing for ${acc}, ${v}, ${a}, ${first}`)
-
-        const addr = _.ETH
         var V; var A;
+        let addr = _.ETH
+        console.log('addr', addr)
+        console.log(`VETH: ${_.BN2Str(await vether.balanceOf(vetherPools.address))}`)
+        console.log(`TKN1: ${_.BN2Str(await token1.balanceOf(vetherPools.address))}`)
+        console.log(`ETH: ${_.BN2Str(await web3.eth.getBalance(vetherPools.address))}`)
+        if(first){
+            V = _.getBN(0); 
+            A = _.getBN(0);
+            stakerCount = 1;
+            poolUnits = 0;
+        } else {
+            V = _.getBN((await vetherPools.poolData(addr)).vether)
+            A = _.getBN((await vetherPools.poolData(addr)).asset)
+            stakerCount = _.BN2Str((await vetherPools.getPoolStakerCount(addr)))
+            poolUnits = _.getBN((await vetherPools.poolData(addr)).poolUnits)
+        }
+        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+
+        let units = math.calcStakeUnits(a, A.plus(a), v, V.plus(v))
+        // console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(V.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
+        
+        let tx = await vetherPools.stake(v, a, addr, { from: acc, value: a })
+
+        assert.equal((await vetherPools.arrayPools(count-1)), addr, 'pools')
+        assert.equal(_.BN2Str((await vetherPools.poolCount())), count, 'poolCount')
+        // assert.equal(((await vetherPools.getPoolStaker(addr, stakerCount-1)), acc, 'stakers'))
+
+        // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), V.plus(v))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), A.plus(a))
+        // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), V.plus(v))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), A.plus(a))
+        // assert.equal(_.BN2Str((await vetherPools.getPoolStakerCount(addr))), +stakerCount + 1, 'stakerCount')
+        // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).poolUnits), units.plus(poolUnits), 'poolUnits')
+
+        assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(v)), 'vether balance')
+        // assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.plus(a)), 'ether balance')
+
+        console.log(`VETH: ${_.BN2Str(await vether.balanceOf(vetherPools.address))}`)
+        console.log(`TKN1: ${_.BN2Str(await token1.balanceOf(vetherPools.address))}`)
+        console.log(`ETH: ${_.BN2Str(await web3.eth.getBalance(vetherPools.address))}`)
+    })
+}
+
+async function stakeTKN1(acc, a, v, first, count) {
+    it(`It should stake TKN1 from ${acc}`, async () => {
+        _stakeTKN(acc, a, v, token1.address, first, count)
+    })
+}
+async function stakeTKN2(acc, a, v, first, count) {
+    it(`It should stake TKN2 from ${acc}`, async () => {
+        _stakeTKN(acc, a, v, token2.address, first, count)
+    })
+}
+
+async function _stakeTKN(acc, a, v, addr, first, count) {
+    var V; var A;
+
+        console.log('addr', addr)
+        console.log(`VETH: ${_.BN2Str(await vether.balanceOf(vetherPools.address))}`)
+        console.log(`TKN1: ${_.BN2Str(await token1.balanceOf(vetherPools.address))}`)
+        console.log(`ETH: ${_.BN2Str(await web3.eth.getBalance(vetherPools.address))}`)
         if(first){
             V = _.getBN(0); 
             A = _.getBN(0);
@@ -114,27 +192,59 @@ async function stakeETH(acc, a, v, first) {
         let units = math.calcStakeUnits(a, A.plus(a), v, V.plus(v))
         // console.log(_.BN2Str(units), _.BN2Str(v), _.BN2Str(V.plus(v)), _.BN2Str(a), _.BN2Str(A.plus(a)))
         
-        let tx = await vetherPools.stake(v, a, addr, { from: acc, value: a })
+        let tx = await vetherPools.stake(v, a, addr, { from: acc})
 
-        assert.equal((await vetherPools.arrayPools(0)), addr, 'pools')
-        assert.equal(_.BN2Str((await vetherPools.poolCount())), 1, 'poolCount')
-        assert.equal((await vetherPools.mapPoolStakers(addr, stakerCount)), acc, 'stakers')
+        assert.equal((await vetherPools.arrayPools(count-1)), addr, 'pools')
+        assert.equal(_.BN2Str((await vetherPools.poolCount())), count, 'poolCount')
+        // assert.equal((await vetherPools.mapPoolStakers(addr, stakerCount)), acc, 'stakers')
 
         // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), V.plus(v))
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), A.plus(a))
         // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), V.plus(v))
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), A.plus(a))
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).stakerCount), +stakerCount + 1, 'stakerCount')
+        // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).stakerCount), +stakerCount + 1, 'stakerCount')
         // assert.equal(_.BN2Str((await vetherPools.poolData(addr)).poolUnits), units.plus(poolUnits), 'poolUnits')
 
         // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(v)), 'vether balance')
-        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.plus(a)), 'ether balance')
+        // assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.plus(a)), 'ether balance')
+
+        console.log(`VETH: ${_.BN2Str(await vether.balanceOf(vetherPools.address))}`)
+        console.log(`TKN1: ${_.BN2Str(await token1.balanceOf(vetherPools.address))}`)
+        console.log(`ETH: ${_.BN2Str(await web3.eth.getBalance(vetherPools.address))}`)
+}
+
+
+async function buyETHWithVETH(acc, v) {
+
+    it(`It should buy ETH with VETH from ${acc}`, async () => {
+
+        const addr = _.ETH
+        const V = _.getBN((await vetherPools.poolData(addr)).vether)
+        const A = _.getBN((await vetherPools.poolData(addr)).asset)
+        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+
+        let a = math.calcSwapOutput(v, V, A)
+        let fee = math.calcSwapFee(v, V, A)
+        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+        
+        let tx = await vetherPools.buyAsset(v, vether.address, addr)
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(v))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(a))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
+
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), _.BN2Str(A.minus(a)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), _.BN2Str(V.plus(v)))
+
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(v)), 'vether balance')
+
     })
 }
 
-async function buyVETH(acc, a) {
+async function sellEthToVETH(acc, a) {
 
-    it(`It should buy VETH from ${acc}`, async () => {
+    it(`It should sell ETH to VETH from ${acc}`, async () => {
 
         await vether.addExcluded(vetherPools.address, { from: acc1 })
 
@@ -147,7 +257,7 @@ async function buyVETH(acc, a) {
         let fee = math.calcSwapFee(a, A, V)
         // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
         
-        let tx = await vetherPools.sellAsset(addr, a, { from: acc, value: a })
+        let tx = await vetherPools.sellAsset(a, addr, addr, { from: acc, value: a })
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(a))
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(v))
@@ -162,33 +272,109 @@ async function buyVETH(acc, a) {
     })
 }
 
-async function sellVETH(acc, v) {
-
-    it(`It should buy VETH from ${acc}`, async () => {
-
-        const addr = _.ETH
-        const V = _.getBN((await vetherPools.poolData(addr)).vether)
-        const A = _.getBN((await vetherPools.poolData(addr)).asset)
-        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
-
-        let a = math.calcSwapOutput(v, V, A)
-        let fee = math.calcSwapFee(v, V, A)
-        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
-        
-        let tx = await vetherPools.buyAsset(addr, v)
-
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(v))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(a))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
-
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), _.BN2Str(A.minus(a)))
-        assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vether), _.BN2Str(V.plus(v)))
-
-        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
-        assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(v)), 'vether balance')
-
+async function buyETHWithTKN1(acc, x) {
+    it(`It should buy ETH with TKN from ${acc}`, async () => {
+        _buyETHWithTKN(acc, x, token1.address)
     })
 }
+
+async function buyETHWithTKN2(acc, x) {
+    it(`It should buy ETH with TKN from ${acc}`, async () => {
+        _buyETHWithTKN(acc, x, token2.address)
+    })
+}
+
+async function _buyETHWithTKN(acc, x, asset) {
+
+        console.log(`ETH: ${_.BN2Str(await web3.eth.getBalance(vetherPools.address))}`)
+
+        // const asset = token1.address
+        const pool = _.ETH
+        const X = _.getBN((await vetherPools.poolData(asset)).asset)
+        const Y = _.getBN((await vetherPools.poolData(asset)).vether)
+        const V = _.getBN((await vetherPools.poolData(pool)).vether)
+        const Z = _.getBN((await vetherPools.poolData(pool)).asset)
+        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let feey = math.calcSwapFee(x, X, Y)
+        let z = math.calcSwapOutput(y, V, Z)
+        let feez = math.calcSwapFee(y, V, Z)
+        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+        
+        let tx = await vetherPools.buyAsset(x, asset, pool)
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.transferAmount), _.BN2Str(0))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(y))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(feey))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.inputAmount), _.BN2Str(y))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.transferAmount), _.BN2Str(0))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.outPutAmount), _.BN2Str(z))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.fee), _.BN2Str(feez))
+
+        assert.equal(_.BN2Str((await vetherPools.poolData(asset)).asset), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(asset)).vether), _.BN2Str(Y.minus(y)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(pool)).vether), _.BN2Str(V.plus(y)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(pool)).asset), _.BN2Str(Z.minus(z)))
+
+        // assert.equal(_.BN2Str(await token1.balanceOf(vetherPools.address)), _.BN2Str(X.plus(x)), 'token1 balance')
+        // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(Y)), 'vether balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(Z.minus(z)), 'ether balance')
+
+}
+
+async function sellEthToTKN1(acc, x) {
+    it(`It should buy ETH with TKN from ${acc}`, async () => {
+        _sellEthToTKN(acc, x, token1.address)
+    })
+}
+
+async function sellEthToTKN2(acc, x) {
+    it(`It should buy ETH with TKN from ${acc}`, async () => {
+        _sellEthToTKN(acc, x, token2.address)
+    })
+}
+
+async function _sellEthToTKN(acc, x, pool) {
+
+        await vether.addExcluded(vetherPools.address, { from: acc1 })
+
+        const asset = _.ETH 
+        const X = _.getBN((await vetherPools.poolData(asset)).asset)
+        const Y = _.getBN((await vetherPools.poolData(asset)).vether)
+        const V = _.getBN((await vetherPools.poolData(pool)).vether)
+        const Z = _.getBN((await vetherPools.poolData(pool)).asset)
+        // console.log('start data', _.BN2Str(V), _.BN2Str(A), stakerCount, _.BN2Str(poolUnits))
+
+        let y = math.calcSwapOutput(x, X, Y)
+        let feey = math.calcSwapFee(x, X, Y)
+        let z = math.calcSwapOutput(y, V, Z)
+        let feez = math.calcSwapFee(y, V, Z)
+        // console.log(_.BN2Str(a), _.BN2Str(A), _.BN2Str(V), _.BN2Str(v), _.BN2Str(fee))
+        
+        let tx = await vetherPools.sellAsset(x, asset, pool, { from: acc, value: x })
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(x))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.transferAmount), _.BN2Str(0))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outPutAmount), _.BN2Str(y))
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(feey))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.inputAmount), _.BN2Str(y))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.transferAmount), _.BN2Str(0))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.outPutAmount), _.BN2Str(z))
+        assert.equal(_.BN2Str(tx.receipt.logs[1].args.fee), _.BN2Str(feez))
+
+        assert.equal(_.BN2Str((await vetherPools.poolData(asset)).asset), _.BN2Str(X.plus(x)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(asset)).vether), _.BN2Str(Y.minus(y)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(pool)).vether), _.BN2Str(V.plus(y)))
+        assert.equal(_.BN2Str((await vetherPools.poolData(pool)).asset), _.BN2Str(Z.minus(z)))
+
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(X.plus(x)), 'ether balance')
+        // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.plus(Y)), 'vether balance')
+        // assert.equal(_.BN2Str(await pool.balanceOf(vetherPools.address)), _.BN2Str(Z.minus(z)), 'token1 balance')
+}
+
+
 
 async function unstakeETH(bp, acc) {
 
@@ -221,7 +407,7 @@ async function unstakeETH(bp, acc) {
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).asset), _.BN2Str(A.minus(a)))
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).vetherStaked), _.BN2Str(V.minus(v)))
         assert.equal(_.BN2Str((await vetherPools.poolData(addr)).assetStaked), _.BN2Str(A.minus(a)))
-        assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.minus(v)), 'vether balance')
+        // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.minus(v)), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
         // assert.equal(_.BN2Str(await vether.balanceOf(vetherPools.address)), _.BN2Str(V.minus(v)), 'vether balance')
         // assert.equal(_.BN2Str(await web3.eth.getBalance(vetherPools.address)), _.BN2Str(A.minus(a)), 'ether balance')
@@ -236,7 +422,16 @@ async function unstakeETH(bp, acc) {
 
 function logETH() {
     it("logs", async () => {
-        await help.logPool(vetherPools, _.ETH)
+        await help.logPool(vetherPools, _.ETH, 'ETH')
+    })
+}
+function logTKN1() {
+    it("logs", async () => {
+        await help.logPool(vetherPools, token1.address, 'TKN1')
+    })
+}function logTKN2() {
+    it("logs", async () => {
+        await help.logPool(vetherPools, token2.address, 'TKN2')
     })
 }
 

@@ -97,8 +97,16 @@ contract VetherPools {
     event Swapped(address assetFrom, address assetTo, uint inputAmount, uint transferAmount, uint outputAmount, uint fee, address recipient);
 
     constructor (address addressVether) public payable {
-        VETHER = addressVether; //0x95D0C08e59bbC354eE2218Da9F82A04D7cdB6fDF;
-        // M = math; //0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2
+        //local
+        VETHER = addressVether;
+
+        // testnet
+        // VETHER = 0x95D0C08e59bbC354eE2218Da9F82A04D7cdB6fDF;
+        // math = MATH(0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2);
+
+        // mainnet
+        // VETHER = 0x4ba6ddd7b89ed838fed25d208d4f644106e34279;
+        // math = MATH(0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2);
     }
 
     function setMath(address _math) public {
@@ -106,7 +114,7 @@ contract VetherPools {
     }
 
     receive() external payable {
-        sell(msg.value, address(0), VETHER);
+        swap(msg.value, address(0), VETHER);
     }
 
     //==================================================================================//
@@ -232,36 +240,21 @@ contract VetherPools {
     //==================================================================================//
     // Swapping functions
 
-    function buy(uint amount, address asset, address pool) public payable returns (uint outputAmount, uint fee) {
+    function swap(uint inputAmount, address withAsset, address toAsset) public payable returns (uint outputAmount, uint fee) {
         require(now < poolData[address(0)].genesis + DAYCAP, "Must not be after Day Cap");
-        require(asset != pool, "Asset must not be the pool");
-        require(pool != VETHER, "Asset must not be Vether");
-        uint _actualAmount = _handleTransferIn(asset, amount);
-        if(asset == VETHER){
-            // buy asset with vether (single swap)
-            (outputAmount, fee) = _swapVetherToAsset(_actualAmount, pool);
+        require(withAsset != toAsset, "Asset must not be the same");
+        uint _actualAmount = _handleTransferIn(withAsset, inputAmount); uint _transferAmount;
+        if(withAsset == VETHER){
+            (outputAmount, fee) = _swapVetherToAsset(_actualAmount, toAsset);
+            emit Swapped(VETHER, toAsset, inputAmount, 0, outputAmount, fee, msg.sender);
+        } else if(toAsset == VETHER) {
+            (outputAmount, fee) = _swapAssetToVether(_actualAmount, withAsset);
+            emit Swapped(withAsset, VETHER, inputAmount, 0, outputAmount, fee, msg.sender);
         } else {
-            // buy vether, buy asset with vether (double swap)
-            (outputAmount, fee) = _swapAssetToAsset(_actualAmount, asset, pool);
+            (_transferAmount, outputAmount, fee) = _swapAssetToAsset(_actualAmount, withAsset, toAsset);
+            emit Swapped(withAsset, toAsset, inputAmount, _transferAmount, outputAmount, fee, msg.sender);
         }
-        _handleTransferOut(pool, outputAmount, msg.sender);
-        return (outputAmount, fee);
-    }
-
-    function sell(uint amount, address pool, address asset) public payable returns (uint outputAmount, uint fee) {
-        require(now < poolData[address(0)].genesis + DAYCAP, "Must not be after Day Cap");
-        require(asset != pool, "Asset must not be the pool");
-        require(pool != VETHER, "Asset must not be Vether");
-        uint _actualAmount = _handleTransferIn(asset, amount);
-        if(asset == VETHER){
-            // sell asset to vether
-            (outputAmount, fee) = _swapAssetToVether(_actualAmount, pool);
-            _handleTransferOut(VETHER, outputAmount, msg.sender);
-        } else {
-            // sell asset to vether, buy asset with vether (double swap)
-            (outputAmount, fee) = _swapAssetToAsset(_actualAmount, pool, asset);
-            _handleTransferOut(asset, outputAmount, msg.sender);
-        }
+        _handleTransferOut(toAsset, outputAmount, msg.sender);
         return (outputAmount, fee);
     }
 
@@ -273,7 +266,6 @@ contract VetherPools {
         poolData[_pool].vether = poolData[_pool].vether.add(_x);
         poolData[_pool].asset = poolData[_pool].asset.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, _pool, false);
-        emit Swapped(VETHER, _pool, _x, 0, _y, _fee, msg.sender);
         return (_y, _fee);
     }
 
@@ -285,16 +277,14 @@ contract VetherPools {
         poolData[_pool].asset = poolData[_pool].asset.add(_x);
         poolData[_pool].vether = poolData[_pool].vether.sub(_y);
         _updatePoolMetrics(_y+_fee, _fee, _pool, true);
-        emit Swapped(_pool, VETHER, _x, 0, _y, _fee, msg.sender);
         return (_y, _fee);
     }
 
-    function _swapAssetToAsset(uint _x, address _pool1, address _pool2) internal returns (uint _z, uint _fee){
-        (uint _y, uint _feey) = _swapAssetToVether(_x, _pool1);
-        (uint _zz, uint _feez) = _swapVetherToAsset(_y, _pool2);
+    function _swapAssetToAsset(uint _x, address _pool1, address _pool2) internal returns (uint _y, uint _z, uint _fee){
+        (uint _yy, uint _feey) = _swapAssetToVether(_x, _pool1);
+        (uint _zz, uint _feez) = _swapVetherToAsset(_yy, _pool2);
         _fee = _feez + calcValueInAsset(_feey, _pool2);
-        emit Swapped(_pool1, _pool2, _x, _y, _zz, _fee, msg.sender);
-        return (_zz, _fee);
+        return (_yy, _zz, _fee);
     }
 
     //==================================================================================//
@@ -458,16 +448,16 @@ contract VetherPools {
         return roi;
    }
 
-   function calcValueInVether(uint amount, address pool) public view returns (uint price){
+   function calcValueInVether(uint a, address pool) public view returns (uint value){
        uint _asset = poolData[pool].asset;
        uint _vether = poolData[pool].vether;
-       return (amount.mul(_vether)).div(_asset);
+       return (a.mul(_vether)).div(_asset);
    }
 
-    function calcValueInAsset(uint amount, address pool) public view returns (uint price){
+    function calcValueInAsset(uint v, address pool) public view returns (uint value){
        uint _asset = poolData[pool].asset;
        uint _vether = poolData[pool].vether;
-       return (amount.mul(_asset)).div(_vether);
+       return (v.mul(_asset)).div(_vether);
    }
 
    function calcAssetPPinVether(uint amount, address pool) public view returns (uint _output){

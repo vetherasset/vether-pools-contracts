@@ -30,10 +30,13 @@ library SafeMath {
     }
 }
 
-contract Math {
+contract MathContract {
     using SafeMath for uint;
 
+    string greeting;
+
     constructor() public {
+        greeting = "HI";
     }
 
     function calcPart(uint bp, uint total) public pure returns (uint part){

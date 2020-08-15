@@ -77,6 +77,15 @@ function calcShare(s, T, A, V){
   return ({'asset':a, 'vether':v})
 }
 
+function calcValueIn(a, A, V) {
+  const _a = new BigNumber(a)
+  const _A = new BigNumber(A)
+  const _V = new BigNumber(V)
+  const numerator = _a.times(_V)
+  const _v = numerator.div(_A)
+  return (new BigNumber(_v)).integerValue(1);;
+}
+
 module.exports = {
   calcSwapOutput: function(x, X, Y) {
   return calcSwapOutput(x, X, Y)
@@ -95,6 +104,9 @@ calcAsymmetricShare: function(s, T, A) {
 },
 calcShare: function(s, T, A, V) {
   return calcShare(s, T, A, V)
+},
+calcValueIn: function(a, A, V) {
+  return calcValueIn(a, A, V)
 }
 };
 

@@ -108,7 +108,7 @@ contract Token1 is ERC20 {
         return true;
     }
 
-    // Transfer function which includes the network fee
+    // Transfer function 
     function _transfer(address _from, address _to, uint _value) internal {
         require(_to != address(0));
         require(balanceOf[_from] >= _value);

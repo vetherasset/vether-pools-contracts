@@ -63,29 +63,26 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   return canLiquidate;
 }
 async function logPool(instance, addressAsset, ticker) {
-  const asset = _.BN2Asset((await instance.poolData(addressAsset)).asset);
-  const vether = _.BN2Asset((await instance.poolData(addressAsset)).vether);
-  const assetStaked = _.BN2Asset((await instance.poolData(addressAsset)).assetStaked);
-  const vetherStaked = _.BN2Asset((await instance.poolData(addressAsset)).vetherStaked);
-  const stakerCount = _.getBN((await instance.getPoolStakerCount(addressAsset)));
-  const poolUnits = _.BN2Asset((await instance.poolData(addressAsset)).poolUnits);
-  const fees = _.BN2Asset((await instance.poolData(addressAsset)).fees);
-  const volume = _.BN2Asset((await instance.poolData(addressAsset)).volume);
-  const txCount = _.getBN((await instance.poolData(addressAsset)).txCount);
+  const asset = _.BN2Asset((await instance.poolData()).asset);
+  const vether = _.BN2Asset((await instance.poolData()).vether);
+  const assetStaked = _.BN2Asset((await instance.poolData()).assetStaked);
+  const vetherStaked = _.BN2Asset((await instance.poolData()).vetherStaked);
+  const poolUnits = _.BN2Asset((await instance.totalSupply()));
+  const fees = _.BN2Asset((await instance.poolData()).fees);
+  const volume = _.BN2Asset((await instance.poolData()).volume);
+  const txCount = _.getBN((await instance.poolData()).txCount);
   console.log("\n-------------------Asset-Vether Details -------------------")
   console.log(`ADDRESS: ${addressAsset}`)
   console.log(`MAPPINGS: [ ${asset} ${ticker} | ${vether} VETH ]`)
   console.log(`STAKES: [ ${assetStaked}  ${ticker} | ${vetherStaked} VETH ]`)
-  console.log(`UNITS: [ ${stakerCount} stakers, ${poolUnits} units ]`)
+  console.log(`UNITS: [ ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logStaker(instance, acc, pool) {
-  let stakeData = (await instance.getMemberStakeData(acc, pool))
-  let poolCount = (await instance.getMemberPoolCount(acc))
+  let stakeData = (await instance.getMemberData(acc))
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${pool}`)
-  console.log(`POOLCOUNT: [ ${poolCount} ]`)
   console.log(`StakeData: [ ${_.BN2Asset(stakeData.vether)} VETH | ${_.BN2Asset(stakeData.asset)} ETH ]`)
   console.log("-----------------------------------------------------------\n")
 }

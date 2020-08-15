@@ -51,7 +51,7 @@ library SafeMath {
     }
 }
 
-contract VetherPools {
+contract VetherPools2 {
     using SafeMath for uint;
 
     address public VETHER;
@@ -81,7 +81,7 @@ contract VetherPools {
     address[] public arrayMembers;
     mapping(address => MemberData) public memberData;
     struct MemberData {
-        bool _;
+        bool isMember;
         mapping(address => StakeData) stakeData;
         address[] arrayPools;
     }
@@ -102,11 +102,11 @@ contract VetherPools {
 
         // testnet
         // VETHER = 0x95D0C08e59bbC354eE2218Da9F82A04D7cdB6fDF;
-        // math = MATH(0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2);
+        // math = MATH(0x476B05e742Bd0Eed4C7cba11A8dDA72BE592B549);
 
         // mainnet
-        // VETHER = 0x4ba6ddd7b89ed838fed25d208d4f644106e34279;
-        // math = MATH(0x3FA9BdcBd17bd75D1Dec10D52C65f41503e344F2);
+        // VETHER = 0x4Ba6dDd7b89ed838FEd25d208D4f644106E34279;
+        // math = MATH(0xe5087d4B22194bEd83556edEDca846c91E550b5B);
     }
 
     function setMath(address _math) public {
@@ -246,13 +246,13 @@ contract VetherPools {
         uint _actualAmount = _handleTransferIn(withAsset, inputAmount); uint _transferAmount;
         if(withAsset == VETHER){
             (outputAmount, fee) = _swapVetherToAsset(_actualAmount, toAsset);
-            emit Swapped(VETHER, toAsset, inputAmount, 0, outputAmount, fee, msg.sender);
+            emit Swapped(VETHER, toAsset, _actualAmount, 0, outputAmount, fee, msg.sender);
         } else if(toAsset == VETHER) {
             (outputAmount, fee) = _swapAssetToVether(_actualAmount, withAsset);
-            emit Swapped(withAsset, VETHER, inputAmount, 0, outputAmount, fee, msg.sender);
+            emit Swapped(withAsset, VETHER, _actualAmount, 0, outputAmount, fee, msg.sender);
         } else {
             (_transferAmount, outputAmount, fee) = _swapAssetToAsset(_actualAmount, withAsset, toAsset);
-            emit Swapped(withAsset, toAsset, inputAmount, _transferAmount, outputAmount, fee, msg.sender);
+            emit Swapped(withAsset, toAsset, _actualAmount, _transferAmount, outputAmount, fee, msg.sender);
         }
         _handleTransferOut(toAsset, outputAmount, msg.sender);
         return (outputAmount, fee);
@@ -309,7 +309,7 @@ contract VetherPools {
     }
 
     function _addDataForMember(address _member, uint _units, uint _vether, uint _asset, address _pool) internal {
-        if(memberData[_member].arrayPools.length < 1){
+        if(isMember(_member)){
             arrayMembers.push(_member);
         }
         if( memberData[_member].stakeData[_pool].stakeUnits == 0){
@@ -385,6 +385,10 @@ contract VetherPools {
     function getStakerUnits(address member, address pool) public view returns(uint stakerUnits){
         return (memberData[member].stakeData[pool].stakeUnits);
     }
+    function getStakerShare(address member, address pool) public view returns(uint stakerShare){
+        uint _units = memberData[member].stakeData[pool].stakeUnits;
+        return math.calcShare(_units, poolData[pool].poolUnits, 10000);
+    }
     function getStakerShareVether(address member, address pool) public view returns(uint vether){
         uint _units = memberData[member].stakeData[pool].stakeUnits;
         vether = math.calcShare(_units, poolData[pool].poolUnits, poolData[pool].vether);
@@ -420,32 +424,56 @@ contract VetherPools {
         return(memberData[member].stakeData[pool]);
     }
 
-    function getPoolROI(address pool) public view returns (uint roi){
-        uint _assetStakedInVether = calcValueInVether(poolData[pool].assetStaked, pool);
-        uint _vetherStart = poolData[pool].vetherStaked.add(_assetStakedInVether);
-        uint _assetInVether = calcValueInVether(poolData[pool].asset, pool);
-        uint _vetherEnd = poolData[pool].vether.add(_assetInVether);
-        if (_vetherStart == 0){
-            roi = 0;
+    function isMember(address member) public view returns(bool){
+        if (memberData[member].arrayPools.length > 0){
+            return true;
         } else {
-            roi = (_vetherEnd.mul(10000)).div(_vetherStart);
+            return false;
         }
-        return roi;
+    }
+
+    function getPoolAge(address pool) public view returns (uint daysSinceGenesis){
+        if(now < (poolData[pool].genesis).add(86400)){
+            return 1;
+        } else {
+            return (now.sub(poolData[pool].genesis)).div(86400);
+        }
+    }
+
+    function getPoolROI(address pool) public view returns (uint roi){
+        uint _vetherStart = poolData[pool].vetherStaked.mul(2);
+        uint _vetherEnd = poolData[pool].vether.mul(2);
+        uint _ROIV = (_vetherEnd.mul(10000)).div(_vetherStart);
+        uint _assetStart = poolData[pool].assetStaked.mul(2);
+        uint _assetEnd = poolData[pool].asset.mul(2);
+        uint _ROIA = (_assetEnd.mul(10000)).div(_assetStart);
+        return (_ROIV + _ROIA).div(2);
+   }
+
+   function getPoolAPY(address pool) public view returns (uint apy){
+        uint avgROI = getPoolROI(pool);
+        uint poolAge = getPoolAge(pool);
+        return (avgROI.mul(365)).div(poolAge);
    }
 
     function getMemberROI(address member, address pool) public view returns (uint roi){
-        uint _assetStakedInVether = calcValueInVether(memberData[member].stakeData[pool].asset, pool);
-        uint _vetherStart = memberData[member].stakeData[pool].vether.add(_assetStakedInVether);
-        uint _memberVether = getStakerShareVether(member, pool);
-        uint _memberAsset = getStakerShareAsset(member, pool);
-        uint _assetInVether = calcValueInVether(_memberAsset, pool);
-        uint _vetherEnd = _memberVether.add(_assetInVether);
-        if (_vetherStart == 0){
-            roi = 0;
+        uint _vetherStart = memberData[member].stakeData[pool].vether.mul(2);
+        if(isMember(member)){
+            uint _vetherEnd = getStakerShareVether(member, pool).mul(2);
+            uint _ROIV = 0; uint _ROIA = 0;
+            if(_vetherStart > 0){
+                _ROIV = (_vetherEnd.mul(10000)).div(_vetherStart);
+            }
+            uint _assetStart = memberData[member].stakeData[pool].asset.mul(2);
+            uint _assetEnd = getStakerShareAsset(member, pool).mul(2);
+            if(_assetStart > 0){
+                _ROIA = (_assetEnd.mul(10000)).div(_assetStart);
+            }
+            return (_ROIV + _ROIA).div(2);
         } else {
-            roi = (_vetherEnd.mul(10000)).div(_vetherStart);
+            return 0;
         }
-        return roi;
+        
    }
 
    function calcValueInVether(uint a, address pool) public view returns (uint value){

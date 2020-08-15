@@ -28,25 +28,22 @@ contract('VETH', function (accounts) {
     // Single swap
     swapVETHToETH(acc0, _.BN2Str(_.one * 10))
     swapETHToVETH(acc0, _.BN2Str(_.one * 1))
-    checkROI()
 
-    stakeTKN1(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 2)
+    stakeTKN1(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 2)
 
     // // Double swap
     swapTKN1ToETH(acc0, _.BN2Str(_.one * 10))
     swapETHToTKN1(acc0, _.BN2Str(_.one * 1))
-    checkROI()
 
-    stakeTKN2(acc0, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 3)
+    stakeTKN2(acc1, _.BN2Str(_.one * 10), _.BN2Str(_.one * 100), true, 3)
 
     // // // Double swap back
     swapTKN2ToETH(acc0, _.BN2Str(_.one * 10))
     swapETHToTKN2(acc0, _.BN2Str(_.one * 1))
-    checkROI()
 
     unstakeETH(10000, acc0)
-    unstakeTKN1(10000, acc0)
-    unstakeTKN2(10000, acc0)
+    unstakeTKN1(10000, acc1)
+    unstakeTKN2(10000, acc1)
 })
 
 
@@ -399,6 +396,17 @@ async function _swapETHToTKN(acc, x, toAsset) {
 async function unstakeETH(bp, acc) {
 
     it(`It should unstake ETH for ${acc}`, async () => {
+        let poolROI = await vetherPools.getPoolROI(_.ETH)
+        console.log('poolROI-ETH', _.BN2Str(poolROI))
+        let poolAge = await vetherPools.getPoolAge(_.ETH)
+        console.log('poolAge-ETH', _.BN2Str(poolAge))
+        let poolAPY = await vetherPools.getPoolAPY(_.ETH)
+        console.log('poolAPY-ETH', _.BN2Str(poolAPY))
+        let memberROI0 = await vetherPools.getMemberROI(acc0, _.ETH)
+        console.log('memberROI0', _.BN2Str(memberROI0))
+        let memberROI1 = await vetherPools.getMemberROI(acc1, _.ETH)
+        console.log('memberROI1', _.BN2Str(memberROI1))
+
         const addr = _.ETH
         var V = _.getBN((await vetherPools.poolData(addr)).vether)
         var A = _.getBN((await vetherPools.poolData(addr)).asset)
@@ -438,18 +446,21 @@ async function unstakeETH(bp, acc) {
         assert.equal(_.BN2Str(stakeData2.stakeUnits), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
 
         await help.logPool(vetherPools, _.ETH, 'ETH')
-        let poolROI = await vetherPools.getPoolROI(_.ETH)
-        console.log('poolROI-ETH', _.BN2Str(poolROI))
     })
 }
 
 async function unstakeTKN1(bp, acc) {
 
     it(`It should unstake TKN1 for ${acc}`, async () => {
+        let poolROI = await vetherPools.getPoolROI(token1.address)
+        console.log('poolROI-TKN1', _.BN2Str(poolROI))
+        let memberROI0 = await vetherPools.getMemberROI(acc0, token1.address)
+        console.log('memberROI0', _.BN2Str(memberROI0))
+        let memberROI1 = await vetherPools.getMemberROI(acc1, token1.address)
+        console.log('memberROI1', _.BN2Str(memberROI1))
+
         await _unstakeTKN(bp, acc, token1.address)
         await help.logPool(vetherPools, token1.address, 'TKN1')
-        let poolROI = await vetherPools.getPoolROI(_.ETH)
-        console.log('poolROI-TKN1', _.BN2Str(poolROI))
 
     })
 }
@@ -457,10 +468,15 @@ async function unstakeTKN1(bp, acc) {
 async function unstakeTKN2(bp, acc) {
 
     it(`It should unstake TKN2 for ${acc}`, async () => {
+        let poolROI = await vetherPools.getPoolROI(token2.address)
+        console.log('poolROI-TKN2', _.BN2Str(poolROI))
+        let memberROI0 = await vetherPools.getMemberROI(acc0, token2.address)
+        console.log('memberROI0', _.BN2Str(memberROI0))
+        let memberROI1 = await vetherPools.getMemberROI(acc1, token2.address)
+        console.log('memberROI1', _.BN2Str(memberROI1))
+
         await _unstakeTKN(bp, acc, token2.address)
         await help.logPool(vetherPools, token2.address, 'TKN2')
-        let poolROI = await vetherPools.getPoolROI(_.ETH)
-        console.log('poolROI-TKN2', _.BN2Str(poolROI))
 
     })
 }

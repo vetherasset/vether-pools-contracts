@@ -13,10 +13,10 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var VETHER = artifacts.require("./Vether.sol");
-var VETHPOOL = artifacts.require("./VetherPools.sol");
+var VFACTORY = artifacts.require("./VFactory.sol");
 var MATH = artifacts.require("MathContract");
 
-var vether;  var vetherPools; var coreMath;
+var vether;  var vFactory; var coreMath;
 var acc0; var acc1; var acc2; var acc3;
 
 contract('VETH', function (accounts) {
@@ -33,12 +33,11 @@ function constructor(accounts) {
     it("constructor events", async () => {
 
         vether = await VETHER.new()
-        vetherPools = await VETHPOOL.new(vether.address)
         coreMath = await MATH.new()
-        await vetherPools.setMath(coreMath.address)
+        vFactory = await VFACTORY.new(vether.address, coreMath.address)
         console.log(`Acc0: ${acc0}`)
         console.log(`Acc1: ${acc1}`)
-        console.log(`Pools: ${vetherPools.address}`)
+        console.log(`Pools: ${vFactory.address}`)
     });
 }
 

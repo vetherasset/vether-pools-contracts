@@ -47,7 +47,7 @@ library SafeMath {
     }
 }
     //======================================VADER=========================================//
-contract Vether is iERC20 {
+contract Vader is iERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -96,12 +96,12 @@ contract Vether is iERC20 {
     //=====================================CREATION=========================================//
     // Constructor
     constructor() public {
-        name = 'VETHER PROTOCOL TOKEN';
-        symbol = 'VETHER';
+        name = 'VADER PROTOCOL TOKEN';
+        symbol = 'VADER';
         decimals = 18;
         one = 10 ** decimals;
         baseline = 1 * 10**6 * one;
-        totalSupply = baseline;
+        totalSupply = 0;
         totalCap = 3 * 10**6 * one;
         emissionCurve = 2048;
         emitting = false;
@@ -110,8 +110,6 @@ contract Vether is iERC20 {
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
         burnAddress = 0x0000000000000000000000000000000000000001;
-        _balances[msg.sender] = totalSupply;
-        emit Transfer(address(0), msg.sender, totalSupply);
     }
 
     //========================================iERC20=========================================//
@@ -304,7 +302,7 @@ contract Vether is iERC20 {
     function assetCount() public view returns (uint256 count){
         return assetArray.length;
     }
-    function allAssets() public view returns (address[] memory allAssets){
+    function allAssets() public view returns (address[] memory _allAssets){
         return assetArray;
     }
     function assetsInRange(uint start, uint count) public view returns (address[] memory someAssets){

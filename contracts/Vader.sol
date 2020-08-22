@@ -109,7 +109,7 @@ contract Vader is iERC20 {
         secondsPerEra = 1; //86400;
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
-        burnAddress = 0x0000000000000000000000000000000000000001;
+        burnAddress = 0x0111011001100001011011000111010101100101;
     }
 
     //========================================iERC20=========================================//
@@ -190,24 +190,6 @@ contract Vader is iERC20 {
     }
 
     //=========================================DAO=========================================//
-    // Can list
-    function listAssetWithClaim(address asset, uint256 maxClaim, uint256 claimRate) public onlyDAO returns(bool){
-        if(!isListed[asset]){
-            isListed[asset] = true;
-            assetArray.push(asset);
-        }
-        mapAsset_maxClaim[asset] = maxClaim;
-        mapAsset_claimRate[asset] = claimRate;
-        emit ListedAsset(msg.sender, asset, maxClaim, claimRate);
-        return true;
-    }
-    // Can delist
-    function delistAsset(address asset) public onlyDAO returns(bool){
-        isListed[asset] = false;
-        mapAsset_maxClaim[asset] = 0;
-        mapAsset_claimRate[asset] = 0;
-        return true;
-    }
     // Can start
     function startEmissions() public onlyDAO returns(bool){
         emitting = true;
@@ -264,37 +246,16 @@ contract Vader is iERC20 {
     // Calculate Daily Emission
     function getDailyEmission() public view returns (uint256) {
         // emission = (adjustedCap - totalSupply) / emissionCurve
-        // adjustedCap = totalCap * (totalSupply / 1bn)
+        // adjustedCap = totalCap * (totalSupply / 1m)
         uint adjustedCap = (totalCap.mul(totalSupply)).div(baseline);
         return (adjustedCap.sub(totalSupply)).div(emissionCurve);
     }
     //======================================UPGRADE========================================//
     // Old Owners to Upgrade
-    function upgrade(address asset) public {
-        require(mapMemberAsset_hasClaimed[msg.sender][asset] == false, "Must not have already claimed");
+    function upgrade() public {
         uint256 balance = iERC20(asset).balanceOf(msg.sender);
-        uint256 claim = balance;                           // Start at balance
-        if(balance > mapAsset_maxClaim[asset]){
-            claim = mapAsset_maxClaim[asset];           // Reduce to the maximum
-        }
-        mapMemberAsset_hasClaimed[msg.sender][asset] = true;
         require(iERC20(asset).transferFrom(msg.sender, burnAddress, claim));
-        uint256 adjustedClaimRate = getAdjustedClaimRate(asset);
-        // vader = rate * claim / 1e8
-        uint256 vader = (adjustedClaimRate.mul(claim)).div(one);
         _mint(msg.sender, vader);
-    }
-     // Calculate Adjusted Claim Rate
-    function getAdjustedClaimRate(address asset) public view returns (uint256 adjustedClaimRate) {
-        uint256 claimRate = mapAsset_claimRate[asset];                           // Get Claim Rate
-        if(totalSupply <= baseline){
-            // return 100%
-            return claimRate;
-        } else {
-            // (claim*(200-(totalSupply-baseline)))/200 -> starts 100% then goes to 0 at 300m. 
-            uint256 _200m = totalCap.sub(baseline);
-            return claimRate.mul(_200m.sub((totalSupply.sub(baseline)))).div(_200m);
-        }
     }
     //======================================HELPERS========================================//
     // Helper Functions
@@ -308,7 +269,7 @@ contract Vader is iERC20 {
     function assetsInRange(uint start, uint count) public view returns (address[] memory someAssets){
         if(count > assetCount()){count = assetCount();}
         address[] memory result = new address[](count);
-        for (uint i = start; i<start.add(count); i++){
+        for (uint i = 0; i<count; i++){
             result[i] = assetArray[i];
         }
         return result;

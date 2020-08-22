@@ -25,12 +25,12 @@ before(async function() {
   acc5 = await accounts[5].getAddress()
 
   token1 = await Token1.new();
-  vader = await Vader.new();
-  await token1.transfer(acc1, BN2Str(100000000 * one))
-  await token1.transfer(acc2, BN2Str(100000000 * one))
-  await token1.transfer(acc3, BN2Str(100000000 * one))
-  await token1.transfer(acc4, BN2Str(100000000 * one))
-  await token1.transfer(acc5, BN2Str(100000000 * one))
+  vader = await Vader.new(token1.address);
+  await token1.transfer(acc1, BN2Str(10000 * one))
+  await token1.transfer(acc2, BN2Str(10000 * one))
+  await token1.transfer(acc3, BN2Str(10000 * one))
+  await token1.transfer(acc4, BN2Str(10000 * one))
+  await token1.transfer(acc5, BN2Str(10000 * one))
 })
 
 describe("Deploy", function() {
@@ -46,89 +46,64 @@ describe("Deploy", function() {
     expect(BN2Str(await vader.secondsPerEra())).to.equal('1');
     // console.log(BN2Str(await vader.nextEraTime()));
     expect(await vader.DAO()).to.equal(acc0);
-    expect(await vader.burnAddress()).to.equal("0x0000000000000000000000000000000000000001");
+    expect(await vader.burnAddress()).to.equal("0x0111011001100001011011000111010101100101");
     expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('0'));
   });
 });
 
 describe("Upgrade", function() {
-    it("DAO list token", async function() {
-        // console.log(await vader.assetCount())
-        expect(await vader.isListed(token1.address)).to.equal(false);
-        await vader.listAssetWithClaim(token1.address, BN2Str(500000 * one), BN2Str(one));
-        expect(BN2Str(await vader.getAdjustedClaimRate(token1.address))).to.equal(BN2Str(1000000000000000000));
-        expect(BN2Str(await vader.assetCount())).to.equal(BN2Str(1));
-        expect(await vader.isListed(token1.address)).to.equal(true);
-        console.log(await vader.allAssets())
-        // expect(await vader.allAssets()).to.deeplyEqual([ '0x7c2C195CD6D34B8F845992d380aADB2730bB9C6F' ]);
-      });
-
-      it("DAO list token", async function() {
-        await vader.listAssetWithClaim(acc1, BN2Str(500000 * one), BN2Str(one));
-        await vader.listAssetWithClaim(acc2, BN2Str(500000 * one), BN2Str(one));
-        await vader.listAssetWithClaim(acc3, BN2Str(500000 * one), BN2Str(one));
-        await vader.listAssetWithClaim(acc4, BN2Str(500000 * one), BN2Str(one));
-        console.log(BN2Str(await vader.assetCount()))
-        console.log(await vader.allAssets())
-        console.log(await vader.assetsInRange('0', '3'))
-        console.log(await vader.assetsInRange('0', '9'))
-      });
 
   it("Should upgrade acc1", async function() {
       // first, upgrade 50m
-    expect(await vader.mapMemberAsset_hasClaimed(acc1, token1.address)).to.equal(false);
     let balance = await token1.balanceOf(acc1)
     await token1.approve(vader.address, balance, {from:acc1})
     expect(BN2Str(await token1.allowance(acc1, vader.address))).to.equal(BN2Str(balance));
-    await vader.upgrade(token1.address, {from:acc1})
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(500000 * one));
-    expect(BN2Str(await token1.balanceOf(acc1))).to.equal(BN2Str(99500000 * one));
-    expect(BN2Str(await vader.balanceOf(acc1))).to.equal(BN2Str(500000 * one));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('488281250000000000000'));
-    expect(await vader.mapMemberAsset_hasClaimed(acc1, token1.address)).to.equal(true);
+    await vader.upgrade({from:acc1})
+    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(10000 * one));
+    expect(BN2Str(await token1.balanceOf(acc1))).to.equal(BN2Str(0));
+    expect(BN2Str(await vader.balanceOf(acc1))).to.equal(BN2Str(10000 * one));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('9765625000000000000'));
   });
-  it("Address Fails second time", async function() {
-    await truffleAssert.reverts(vader.upgrade(token1.address, {from:acc1}))
-  });
+
   it("Should upgrade acc2", async function() {
     // first, upgrade 50m
     let balance = await token1.balanceOf(acc2)
     await token1.approve(vader.address, balance, {from:acc2})
-    await vader.upgrade(token1.address, {from:acc2})
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(1000000 * one));
-    expect(BN2Str(await token1.balanceOf(acc2))).to.equal(BN2Str(99500000 * one));
-    expect(BN2Str(await vader.balanceOf(acc2))).to.equal(BN2Str(500000 * one));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('976562500000000000000'));
+    await vader.upgrade({from:acc2})
+    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(20000 * one));
+    expect(BN2Str(await token1.balanceOf(acc2))).to.equal(BN2Str(0));
+    expect(BN2Str(await vader.balanceOf(acc2))).to.equal(BN2Str(10000 * one));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('19531250000000000000'));
     });
     it("Should upgrade acc3", async function() {
     // first, upgrade 50m
     let balance = await token1.balanceOf(acc3)
     await token1.approve(vader.address, balance, {from:acc3})
-    await vader.upgrade(token1.address, {from:acc3})
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(1500000 * one));
-    expect(BN2Str(await token1.balanceOf(acc3))).to.equal(BN2Str(99500000 * one));
-    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str(500000 * one));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('1464843750000000000000'));
+    await vader.upgrade({from:acc3})
+    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(30000 * one));
+    expect(BN2Str(await token1.balanceOf(acc3))).to.equal(BN2Str(0));
+    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str(10000 * one));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('29296875000000000000'));
     });
     it("Should upgrade acc4", async function() {
     // first, upgrade 50m
     let balance = await token1.balanceOf(acc4)
     await token1.approve(vader.address, balance, {from:acc4})
-    await vader.upgrade(token1.address, {from:acc4})
-    expect(BN2Str(await vader.totalSupply())).to.equal('1875000000000000000000000');
-    expect(BN2Str(await token1.balanceOf(acc4))).to.equal(BN2Str(99500000 * one));
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('375000000000000000000000');
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('1831054687500000000000'));
+    await vader.upgrade({from:acc4})
+    expect(BN2Str(await vader.totalSupply())).to.equal('40000000000000000000000');
+    expect(BN2Str(await token1.balanceOf(acc4))).to.equal(BN2Str(0));
+    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000000000');
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('183105468710000000000'));
     });
     it("Should upgrade acc5", async function() {
     // first, upgrade 50m
     let balance = await token1.balanceOf(acc5)
     await token1.approve(vader.address, balance, {from:acc5})
-    await vader.upgrade(token1.address, {from:acc5})
-    expect(BN2Str(await vader.totalSupply())).to.equal('2156250000000000000000000');
-    expect(BN2Str(await token1.balanceOf(acc5))).to.equal(BN2Str(99500000 * one));
-    expect(BN2Str(await vader.balanceOf(acc5))).to.equal('281250000000000000000000');
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('2105712890625000000000'));
+    await vader.upgrade({from:acc5})
+    expect(BN2Str(await vader.totalSupply())).to.equal('50000000000000000000000');
+    expect(BN2Str(await token1.balanceOf(acc5))).to.equal(BN2Str(9910000 * one));
+    expect(BN2Str(await vader.balanceOf(acc5))).to.equal('28121000000000000000000');
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('210571289062100000000'));
     });
 });
 
@@ -137,15 +112,15 @@ describe("Be a valid ERC-20", function() {
     await vader.approve(acc4, "1000", {from:acc1}) 
     expect(BN2Str(await vader.allowance(acc1, acc4))).to.equal('1000');
     await vader.transferFrom(acc1, acc4, "1000", {from:acc4})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('375000000000000000001000');
+    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001000');
   });
   it("Should transfer to", async function() {
     await vader.transferTo(acc4, "1000", {from:acc1}) 
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('375000000000000000002000');
+    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000002000');
   });
   it("Should burn", async function() {
     await vader.burn("500", {from:acc4})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('375000000000000000001500');
+    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001500');
     expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('2156249999999999999999500'));
 
   });
@@ -153,7 +128,7 @@ describe("Be a valid ERC-20", function() {
     await vader.approve(acc2, "500", {from:acc4}) 
     expect(BN2Str(await vader.allowance(acc4, acc2))).to.equal('500');
     await vader.burnFrom(acc4, "500", {from:acc2})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('375000000000000000001000');
+    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001000');
     expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('2156249999999999999999000'));
 
   });
@@ -187,7 +162,7 @@ describe("DAO Functions", function() {
 
 describe("Emissions", function() {
   it("Should emit properly", async function() {
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('4211425781249999999998'));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('97656249999999999998'));
     // await sleep(2000)
     await vader.transfer(acc0, BN2Str(10000 * one), {from:acc1})
     await vader.transfer(acc1, BN2Str(10000 * one), {from:acc0})

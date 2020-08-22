@@ -68,15 +68,10 @@ contract Vader is iERC20 {
     uint256 public currentEra;
     uint256 public nextEraTime;
 
+    address public VETHER;
     address public incentiveAddress;
     address public DAO;
     address public burnAddress;
-
-    address[] public assetArray;
-    mapping(address => bool) public isListed;
-    mapping(address => uint256) public mapAsset_maxClaim;
-    mapping(address => uint256) public mapAsset_claimRate;
-    mapping(address => mapping(address => bool)) public mapMemberAsset_hasClaimed;
 
     // Events
     event ListedAsset(address indexed DAO, address indexed asset, uint256 maxClaim, uint256 claimRate);
@@ -95,7 +90,7 @@ contract Vader is iERC20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor() public {
+    constructor(address _vether) public {
         name = 'VADER PROTOCOL TOKEN';
         symbol = 'VADER';
         decimals = 18;
@@ -109,6 +104,7 @@ contract Vader is iERC20 {
         secondsPerEra = 1; //86400;
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
+        VETHER = _vether;
         burnAddress = 0x0111011001100001011011000111010101100101;
     }
 
@@ -253,25 +249,9 @@ contract Vader is iERC20 {
     //======================================UPGRADE========================================//
     // Old Owners to Upgrade
     function upgrade() public {
-        uint256 balance = iERC20(asset).balanceOf(msg.sender);
-        require(iERC20(asset).transferFrom(msg.sender, burnAddress, claim));
-        _mint(msg.sender, vader);
+        uint256 balance = iERC20(VETHER).balanceOf(msg.sender);
+        require(iERC20(VETHER).transferFrom(msg.sender, burnAddress, balance));
+        _mint(msg.sender, balance);
     }
-    //======================================HELPERS========================================//
-    // Helper Functions
 
-    function assetCount() public view returns (uint256 count){
-        return assetArray.length;
-    }
-    function allAssets() public view returns (address[] memory _allAssets){
-        return assetArray;
-    }
-    function assetsInRange(uint start, uint count) public view returns (address[] memory someAssets){
-        if(count > assetCount()){count = assetCount();}
-        address[] memory result = new address[](count);
-        for (uint i = 0; i<count; i++){
-            result[i] = assetArray[i];
-        }
-        return result;
-    }
 }

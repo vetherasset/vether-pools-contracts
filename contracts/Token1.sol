@@ -1,4 +1,4 @@
-pragma solidity 0.6.4;
+pragma solidity 0.6.8;
 
 
 //IERC20 Interface
@@ -69,7 +69,7 @@ contract Token1 is ERC20 {
     string public name;                                         // Name of Coin
     string public symbol;                                       // Symbol of Coin
     uint256 public decimals  = 18;                              // Decimals
-    uint256 public override totalSupply  = 1000000 * (10 ** decimals);   // 1,000,000 Total
+    uint256 public override totalSupply  = 1*10**9 * (10 ** decimals);   // 1,000,000 Total
 
     // Mapping
     mapping(address => uint256) public override balanceOf;                          // Map balanceOf

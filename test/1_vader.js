@@ -12,7 +12,7 @@ function sleep(ms) {
 }
 
 var token1; var vader;
-var acc0; var acc1; var acc2; var acc3; var acc4; var acc5;
+var acc0; var acc1; var acc2; var acc3; var acc0; var acc5;
 const one = 10**18
 
 before(async function() {
@@ -21,16 +21,11 @@ before(async function() {
   acc1 = await accounts[1].getAddress()
   acc2 = await accounts[2].getAddress()
   acc3 = await accounts[3].getAddress()
-  acc4 = await accounts[4].getAddress()
-  acc5 = await accounts[5].getAddress()
 
   token1 = await Token1.new();
   vader = await Vader.new(token1.address);
   await token1.transfer(acc1, BN2Str(10000 * one))
   await token1.transfer(acc2, BN2Str(10000 * one))
-  await token1.transfer(acc3, BN2Str(10000 * one))
-  await token1.transfer(acc4, BN2Str(10000 * one))
-  await token1.transfer(acc5, BN2Str(10000 * one))
 })
 
 describe("Deploy", function() {
@@ -75,61 +70,32 @@ describe("Upgrade", function() {
     expect(BN2Str(await vader.balanceOf(acc2))).to.equal(BN2Str(10000 * one));
     expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('19531250000000000000'));
     });
-    it("Should upgrade acc3", async function() {
-    // first, upgrade 50m
-    let balance = await token1.balanceOf(acc3)
-    await token1.approve(vader.address, balance, {from:acc3})
-    await vader.upgrade({from:acc3})
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str(30000 * one));
-    expect(BN2Str(await token1.balanceOf(acc3))).to.equal(BN2Str(0));
-    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str(10000 * one));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('29296875000000000000'));
-    });
-    it("Should upgrade acc4", async function() {
-    // first, upgrade 50m
-    let balance = await token1.balanceOf(acc4)
-    await token1.approve(vader.address, balance, {from:acc4})
-    await vader.upgrade({from:acc4})
-    expect(BN2Str(await vader.totalSupply())).to.equal('40000000000000000000000');
-    expect(BN2Str(await token1.balanceOf(acc4))).to.equal(BN2Str(0));
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000000000');
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('183105468710000000000'));
-    });
-    it("Should upgrade acc5", async function() {
-    // first, upgrade 50m
-    let balance = await token1.balanceOf(acc5)
-    await token1.approve(vader.address, balance, {from:acc5})
-    await vader.upgrade({from:acc5})
-    expect(BN2Str(await vader.totalSupply())).to.equal('50000000000000000000000');
-    expect(BN2Str(await token1.balanceOf(acc5))).to.equal(BN2Str(9910000 * one));
-    expect(BN2Str(await vader.balanceOf(acc5))).to.equal('28121000000000000000000');
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('210571289062100000000'));
-    });
+
 });
 
 describe("Be a valid ERC-20", function() {
   it("Should transfer From", async function() {
-    await vader.approve(acc4, "1000", {from:acc1}) 
-    expect(BN2Str(await vader.allowance(acc1, acc4))).to.equal('1000');
-    await vader.transferFrom(acc1, acc4, "1000", {from:acc4})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001000');
+    await vader.approve(acc0, "1000", {from:acc1}) 
+    expect(BN2Str(await vader.allowance(acc1, acc0))).to.equal('1000');
+    await vader.transferFrom(acc1, acc0, "1000", {from:acc0})
+    expect(BN2Str(await vader.balanceOf(acc0))).to.equal('1000');
   });
   it("Should transfer to", async function() {
-    await vader.transferTo(acc4, "1000", {from:acc1}) 
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000002000');
+    await vader.transferTo(acc0, "1000", {from:acc1}) 
+    expect(BN2Str(await vader.balanceOf(acc0))).to.equal('2000');
   });
   it("Should burn", async function() {
-    await vader.burn("500", {from:acc4})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001500');
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('2156249999999999999999500'));
+    await vader.burn("500", {from:acc0})
+    expect(BN2Str(await vader.balanceOf(acc0))).to.equal('1500');
+    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('19999999999999999999500'));
 
   });
   it("Should burn from", async function() {
-    await vader.approve(acc2, "500", {from:acc4}) 
-    expect(BN2Str(await vader.allowance(acc4, acc2))).to.equal('500');
-    await vader.burnFrom(acc4, "500", {from:acc2})
-    expect(BN2Str(await vader.balanceOf(acc4))).to.equal('10000000000000000001000');
-    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('2156249999999999999999000'));
+    await vader.approve(acc2, "500", {from:acc0}) 
+    expect(BN2Str(await vader.allowance(acc0, acc2))).to.equal('500');
+    await vader.burnFrom(acc0, "500", {from:acc2})
+    expect(BN2Str(await vader.balanceOf(acc0))).to.equal('1000');
+    expect(BN2Str(await vader.totalSupply())).to.equal(BN2Str('19999999999999999999000'));
 
   });
 });
@@ -162,19 +128,19 @@ describe("DAO Functions", function() {
 
 describe("Emissions", function() {
   it("Should emit properly", async function() {
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('97656249999999999998'));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('39062499999999999998'));
     // await sleep(2000)
-    await vader.transfer(acc0, BN2Str(10000 * one), {from:acc1})
+    await vader.transfer(acc0, BN2Str(10000 * one), {from:acc2})
     await vader.transfer(acc1, BN2Str(10000 * one), {from:acc0})
     expect(BN2Str(await vader.currentEra())).to.equal('3');
-    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str('508431077003479003906246'));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('4227892728522419929502'));
+    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str('78201293945312499996'));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('39215236902236938474'));
     
     await sleep(2000)
     await vader.transfer(acc0, BN2Str(10000 * one), {from:acc1})
     expect(BN2Str(await vader.currentEra())).to.equal('4');
-    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str('512658969732001423835748'));
-    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('4236150331507815280927'));
+    expect(BN2Str(await vader.balanceOf(acc3))).to.equal(BN2Str('117416530847549438470'));
+    expect(BN2Str(await vader.getDailyEmission())).to.equal(BN2Str('39291829161811619995'));
   });
 
   it("DAO changeEraDuration", async function() {

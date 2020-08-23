@@ -113,11 +113,11 @@ contract VPool is iERC20 {
    
     // Only Router can execute
     modifier onlyRouter() {
-        _ivRouter();
+        _isRouter();
         _;
     }
 
-    function _ivRouter() internal view {
+    function _isRouter() internal view {
         iVDAO vdao = iVDAO(iVADER(VADER).DAO());
         require(msg.sender == vdao.ROUTER(), "RouterErr");
     }
@@ -130,11 +130,11 @@ contract VPool is iERC20 {
         iVDAO vdao = iVDAO(iVADER(VADER).DAO());
 
         if(_token == address(0)){
-            _name = "VetherPoolV1-Ethereum";
+            _name = "VaderPoolV1-Ethereum";
             _symbol = "VPT1-ETH";
         } else {
             string memory tokenName = iERC20(_token).name();
-            _name = string(abi.encodePacked("VetherPoolV1-", tokenName));
+            _name = string(abi.encodePacked("VaderPoolV1-", tokenName));
             string memory tokenSymbol = iERC20(_token).symbol();
             _symbol = string(abi.encodePacked("VPT1-", tokenSymbol));
             iERC20(_token).approve(vdao.ROUTER(), (2**256)-1);
@@ -509,7 +509,7 @@ contract VRouter {
     function buyTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(VADER, amount, pool);
-        (outputAmount, fee) = _swapBaseToToken(pool, amount);
+        (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
@@ -527,7 +527,7 @@ contract VRouter {
     function sellTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(token, amount, pool);
-        (outputAmount, fee) = _swapTokenToBase(pool, amount);
+        (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked = totalStaked.sub(outputAmount);
         totalVolume += outputAmount;

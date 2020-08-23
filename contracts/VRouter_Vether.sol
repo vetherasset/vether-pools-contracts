@@ -510,7 +510,7 @@ contract VRouter_Vether {
     function buyTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(VADER, amount, pool);
-        (outputAmount, fee) = _swapBaseToToken(pool, amount);
+        (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
@@ -528,7 +528,7 @@ contract VRouter_Vether {
     function sellTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
         uint _actualAmount = _handleTransferIn(token, amount, pool);
-        (outputAmount, fee) = _swapTokenToBase(pool, amount);
+        (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked = totalStaked.sub(outputAmount);
         totalVolume += outputAmount;
@@ -558,11 +558,12 @@ contract VRouter_Vether {
             (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to VADER
             totalVolume += _yy; totalFees += _feey;
             // addDividend(poolFrom, _yy, _feey);
-            iERC20(VADER).transferFrom(poolFrom, poolTo, _yy); 
-            (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _yy);              // Buy to token
+            // iERC20(VADER).transferFrom(poolFrom, poolTo, _yy); 
+            uint _actualYY = _handleTransferOver(VADER, poolFrom, poolTo, _yy);
+            (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _actualYY);              // Buy to token
             totalFees += VPool_Vether(poolTo).calcValueInBase(_feez);
             // addDividend(poolTo, _zz, _feez);
-            _transferAmount = _yy; outputAmount = _zz; 
+            _transferAmount = _actualYY; outputAmount = _zz; 
             fee = _feez + VPool_Vether(poolTo).calcValueInToken(_feey);
         }
         swapTx += 1;
@@ -668,6 +669,15 @@ contract VRouter_Vether {
             }
         }
     }
+
+    function _handleTransferOver(address _token, address _from, address _to, uint _amount) internal returns(uint actual){
+        if(_amount > 0) {
+            uint startBal = iERC20(_token).balanceOf(_to); 
+            iERC20(_token).transferFrom(_from, _to, _amount); 
+            actual = iERC20(_token).balanceOf(_to).sub(startBal);
+        }
+    }
+    
 
     //======================================HELPERS========================================//
     // Helper Functions

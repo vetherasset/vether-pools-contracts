@@ -29,7 +29,14 @@ Vether Nuances
 
 * Does not have DAO address, cannot change DAO.
 
-1) modify Utils to not ask Vether for DAO address
+1) Modify Utils to not ask Vether for DAO address, set DAO address in deploy
+2) Modify Router to set DAO address in deploy (and VPool to also set)
+3) Modify DAO to not ask Vether for DAO address
+
+## Addresses
+
+### Kovan
+
 
 
 ```

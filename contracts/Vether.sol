@@ -71,6 +71,9 @@ contract Vether is iERC20 {
     uint256 public decimals  = 18;                              // Decimals
     uint256 public override totalSupply  = 1*10**6 * (10 ** decimals);   // 1,000,000 Total
 
+    uint public totalFees;
+    mapping(address=>bool) public mapAddress_Excluded;  
+
     // ERC-20 Mappings
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -125,11 +128,26 @@ contract Vether is iERC20 {
         return true;
     }
 
-    // Internal transfer function
-    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        require(sender != address(0), "iERC20: transfer from the zero address");
-        _balances[sender] = _balances[sender].sub(amount, "iERC20: transfer amount exceeds balance");
-        _balances[recipient] = _balances[recipient].add(amount);
-        emit Transfer(sender, recipient, amount);
+       // Internal transfer function which includes the Fee
+    function _transfer(address _from, address _to, uint _value) private {
+        require(_balances[_from] >= _value, 'Must not send more than balance');
+        require(_balances[_to] + _value >= _balances[_to], 'Balance overflow');
+        _balances[_from] =_balances[_from].sub(_value);
+        uint _fee = _getFee(_from, _to, _value);                                            // Get fee amount
+        _balances[_to] += (_value.sub(_fee));                                               // Add to receiver
+        _balances[address(this)] += _fee;                                                   // Add fee to self
+        totalFees += _fee;                                                                  // Track fees collected
+        emit Transfer(_from, _to, (_value.sub(_fee)));                                      // Transfer event
+        if (!mapAddress_Excluded[_from] && !mapAddress_Excluded[_to]) {
+            emit Transfer(_from, address(this), _fee);                                      // Fee Transfer event
+        }
+    }
+    // Calculate Fee amount
+    function _getFee(address _from, address _to, uint _value) private view returns (uint) {
+        if (mapAddress_Excluded[_from] || mapAddress_Excluded[_to]) {
+           return 0;                                                                        // No fee if excluded
+        } else {
+            return (_value / 1000);                                                         // Fee amount = 0.1%
+        }
     }
 }

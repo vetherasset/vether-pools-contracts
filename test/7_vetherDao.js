@@ -21,6 +21,26 @@ var acc0; var acc1; var acc2; var acc3;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+  
+function assertBn(string, _one, _two){
+    assert.equal(_.BN2Str(_one), _.BN2Str(_two), string)
+}
+function lassertBn(string, _one, _two){
+    console.log(string, _.BN2Str(_one), _.BN2Str(_two))
+}
+
+function assertStr(string, _one, _two){
+    assert.equal(_one, _two, string)
+}
+function lassertStr(string, _one, _two){
+    console.log(string, _one, _two)
+}
+function log(thing){
+    console.log(thing)
+}
+function logBn(thing){
+    console.log(_.BN2Str(thing))
+}
 
 contract('SPT', function (accounts) {
 
@@ -31,13 +51,23 @@ contract('SPT', function (accounts) {
     lockFail()
     lockETH(acc0)
     lockTKN(acc1)
-    voteRouter(acc0)
-    tryToMove()
-    swapFail(acc0, _.BN2Str(_.one * 10))
+
+    deployR2()
+    voteRouterR2(acc0)
+    tryToMoveR2()
+    swapFailR1(acc0, _.BN2Str(_.one * 10))
     swapPassR2(acc0, _.BN2Str(_.one * 10))
-    voteDao(acc0)
-    tryToMoveDao()
-    swapPassR2(acc0, _.BN2Str(_.one * 10))
+
+    deployDao2AndR3()
+    voteDao2(acc0)
+    tryToMoveDao2()
+    swapFailR2(acc0, _.BN2Str(_.one * 10))
+    swapPassR3(acc0, _.BN2Str(_.one * 10))
+
+    unlockETH(acc0)
+    unlockTKN(acc1)
+    unstake2(acc0)
+    // unstake2(acc1)
 
 })
 
@@ -78,8 +108,33 @@ function constructor(accounts) {
         await token2.transfer(acc1, _.getBN(_.BN2Int(supply)/2))
         await token1.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
         await token2.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+
     });
 }
+function deployR2() {
+    it("deloy router2", async () => {
+        vRouter2 = await VROUTER.new(vether.address, vDao.address, utils.address)
+        // await vDao.setGenesisRouter(vRouter2.address)
+        await vRouter2.migrateRouterData(vRouter.address);
+        await vRouter2.migrateTokenData(vRouter.address);
+        console.log(`vRouter2: ${vRouter2.address}`)
+    });
+}
+function deployDao2AndR3() {
+    it("deloy dao and router3", async () => {
+
+        vDao2 = await VDAO.new(vether.address, utils.address)
+        console.log(`vDao2: ${vDao2.address}`)
+        console.log(`VDAO: ${await utils.VDAO()}`)
+
+        vRouter3 = await VROUTER.new(vether.address, vDao2.address, utils.address)
+        await vDao2.setGenesisRouter(vRouter3.address)
+        await vRouter3.migrateRouterData(vRouter2.address);
+        await vRouter3.migrateTokenData(vRouter2.address);
+        console.log(`vRouter3: ${vRouter3.address}`)
+    });
+}
+
 
 async function createPool() {
     it("It should deploy Eth Pool", async () => {
@@ -151,56 +206,62 @@ async function lockFail() {
 async function lockETH(acc) {
     it("It should lock", async () => {
         let balance = await vPoolETH.balanceOf(acc)
-        // await vPoolETH.approve(vDao.address, balance, { from: acc })
+        let weight = await utils.getShareOfBaseAmount(_.ETH, acc)
         await vDao.lock(vPoolETH.address, balance, { from: acc })
-        console.log(`isMember: ${await vDao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await vDao.mapMemberPool_Balance(acc, _.ETH)}`)
-        console.log(`totalWeight: ${await vDao.totalWeight()}`)
-        console.log(`mapMember_Weight: ${await vDao.mapMember_Weight(acc)}`)
+        assert.equal(await vDao.wasMember(acc), true)
+        assert.equal(_.BN2Str(await vDao.mapMemberPool_Balance(acc, vPoolETH.address)), _.BN2Str(balance))
+        assert.equal(_.BN2Str(await vDao.totalWeight()), _.BN2Str(weight))
+        assert.equal(_.BN2Str(await vDao.mapMember_Weight(acc)), _.BN2Str(weight))
     })
 }
 
 async function lockTKN(acc) {
     it("It should lock", async () => {
         let balance = await vPoolTKN1.balanceOf(acc)
-        // console.log(`balance: ${balance}`)
-        // await vPoolTKN1.approve(vDao.address, balance, { from: acc })
+        let weight = await utils.getShareOfBaseAmount(token1.address, acc)
+        let totalWeight = _.getBN(await vDao.totalWeight());
+        let startWeight = _.getBN(await vDao.mapMember_Weight(acc));
+        lassertBn('totalWeight', await vDao.totalWeight())
         await vDao.lock(vPoolTKN1.address, balance, { from: acc })
-        console.log(`isMember: ${await vDao.isMember(acc)}`)
-        console.log(`mapMemberPool_Balance: ${await vDao.mapMemberPool_Balance(acc, _.ETH)}`)
-        console.log(`totalWeight: ${await vDao.totalWeight()}`)
-        console.log(`mapMember_Weight: ${await vDao.mapMember_Weight(acc)}`)
+        assert.equal(await vDao.wasMember(acc), true)
+        assert.equal(_.BN2Str(await vDao.mapMemberPool_Balance(acc, vPoolTKN1.address)), _.BN2Str(balance))
+        assert.equal(_.BN2Str(await vDao.totalWeight()), _.BN2Str(totalWeight.plus(weight)))
+        assert.equal(_.BN2Str(await vDao.mapMember_Weight(acc)), _.BN2Str(startWeight.plus(weight)))
+        lassertBn('totalWeight', await vDao.totalWeight())
     })
 }
 
-async function voteRouter() {
+async function voteRouterR2() {
     it("It should vote", async () => {
-        vRouter2 = await VROUTER.new(vether.address, vDao.address, utils.address)
-        await vRouter2.migrateRouterData(vRouter.address);
-        await vRouter2.migrateTokenData(vRouter.address);
-        console.log(`vRouter2: ${vRouter2.address}`)
+        let memberWeight = await vDao.mapMember_Weight(acc0)
         await vDao.voteRouterChange(vRouter2.address, { from: acc0 })
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vRouter2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vRouter2.address, acc0)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vRouter2.address)}`)
-        console.log(`proposedRouter: ${await vDao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await vDao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await vDao.routerChangeStart()}`)
+        lassertBn('totalWeight', await vDao.totalWeight())
+        assertBn('mapAddress_Votes', await vDao.mapAddress_Votes(vRouter2.address), memberWeight)
+        assertBn('mapAddressMember_Votes', await vDao.mapAddressMember_Votes(vRouter2.address, acc0),memberWeight)
+        assertStr('hasQuorum', await vDao.hasQuorum(vRouter2.address),false)
+        assertStr('proposedRouter', await vDao.proposedRouter(),'0x0000000000000000000000000000000000000000')
+        assertStr('proposedRouterChange', await vDao.proposedRouterChange(),false)
+        lassertBn('routerChangeStart', await vDao.routerChangeStart(),0)
     })
     it("It should vote again", async () => {
+        let memberWeight = await vDao.mapMember_Weight(acc0)
+        let memberWeight1 = _.getBN(await vDao.mapMember_Weight(acc1))
         await vDao.voteRouterChange(vRouter2.address, { from: acc1 })
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vRouter2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vRouter2.address, acc1)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vRouter2.address)}`)
-        console.log(`proposedRouter: ${await vDao.proposedRouter()}`)
-        console.log(`proposedRouterChange: ${await vDao.proposedRouterChange()}`)
-        console.log(`routerChangeStart: ${await vDao.routerChangeStart()}`)
+        lassertBn('totalWeight', await vDao.totalWeight())
+        assertBn('mapAddress_Votes', await vDao.mapAddress_Votes(vRouter2.address), memberWeight1.plus(memberWeight))
+        assertBn('mapAddressMember_Votes', await vDao.mapAddressMember_Votes(vRouter2.address, acc0),memberWeight)
+        assertStr('hasQuorum', await vDao.hasQuorum(vRouter2.address),true)
+        assertStr('proposedRouter', await vDao.proposedRouter(),vRouter2.address)
+        assertStr('proposedRouterChange', await vDao.proposedRouterChange(),true)
+        lassertBn('routerChangeStart', await vDao.routerChangeStart(),0)
     })
 }
 
-async function tryToMove() {
+
+
+async function tryToMoveR2() {
     it("It should move again", async () => {
-        await vDao.moveRouter()
+        await truffleAssert.reverts(vDao.moveRouter());
         console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vRouter2.address)}`)
         console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vRouter2.address, acc1)}`)
         console.log(`hasQuorum: ${await vDao.hasQuorum(vRouter2.address)}`)
@@ -221,6 +282,58 @@ async function tryToMove() {
         console.log(`routerChangeStart: ${await vDao.routerChangeStart()}`)
         console.log(`routerHasMoved: ${await vDao.routerHasMoved()}`)
         console.log(`ROUTER: ${await vDao.ROUTER()}`)
+    })
+}
+
+async function voteDao2() {
+    it("It should vote", async () => {
+        
+        await vDao.voteDaoChange(vDao2.address, { from: acc0 })
+        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc0)}`)
+        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
+        console.log(`proposedDao: ${await vDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
+    })
+    it("It should vote again", async () => {
+        await vDao.voteDaoChange(vDao2.address, { from: acc1 })
+        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
+        console.log(`proposedDao: ${await vDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
+    })
+}
+
+async function tryToMoveDao2() {
+    it("It should revert for address(0)", async () => {
+        await truffleAssert.reverts(vDao.moveRouter());
+    })
+    it("It should move again", async () => {
+        await truffleAssert.reverts(vDao.moveDao());
+        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
+        console.log(`proposedDao: ${await vDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
+        console.log(`daoHasMoved: ${await vDao.daoHasMoved()}`)
+        console.log(`VDAO: ${await vDao.VDAO()}`)
+    })
+    it("It should try to move again", async () => {
+        await sleep(2000)
+        await vDao.moveDao()
+        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
+        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
+        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
+        console.log(`proposedDao: ${await vDao.proposedDao()}`)
+        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
+        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
+        console.log(`daoHasMoved: ${await vDao.daoHasMoved()}`)
+        console.log(`VDAO: ${await vDao.VDAO()}`)
+        console.log(`VDAO: ${await utils.VDAO()}`)
     })
 }
 
@@ -248,92 +361,79 @@ async function swapPassR2(acc, b) {
     })
 }
 
-async function _passSwap(acc, b, router) {
+async function swapPassR3(acc, b) {
 
     it(`It should buy ETH with BASE from ${acc}`, async () => {
-        let token = _.ETH
-        let poolData = await utils.getPoolData(token);
-        const B = _.getBN(poolData.baseAmt)
-        const T = _.getBN(poolData.tokenAmt)
-        console.log('start data', _.BN2Str(B), _.BN2Str(T))
+        console.log(`vether: ${await utils.VETHER()}`)
+        // console.log(`DAO: ${await vether.DAO()}`)
+        assert.equal(await vDao2.ROUTER(), vRouter3.address)
+        await _passSwap(acc, b, vRouter3)
+        await help.logPool(utils, _.ETH, 'ETH')
 
-        let t = math.calcSwapOutput(b, B, T)
-        let fee = math.calcSwapFee(b, B, T)
-        console.log(_.BN2Str(t), _.BN2Str(T), _.BN2Str(B), _.BN2Str(b), _.BN2Str(fee))
-        
-        let tx = await router.buy(b, _.ETH)
-        poolData = await utils.getPoolData(token);
-
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.inputAmount), _.BN2Str(b))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputAmount), _.BN2Str(t))
-        assert.equal(_.BN2Str(tx.receipt.logs[0].args.fee), _.BN2Str(fee))
-
-        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(b)))
-
-        assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
-        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.plus(b)), 'vether balance')
-
-        
-        
     })
 }
 
-async function swapFail(acc, b) {
+async function _passSwap(acc, b, router) {
+
+    it(`It should buy ETH with BASE from ${acc}`, async () => {
+        let tx = await router.buy(b, _.ETH)
+    })
+    it(`It should sell ETH to BASE from ${acc}`, async () => {
+        await router.sell(b, _.ETH)
+    })
+    it(`It should sell ETH to TKN1 from ${acc}`, async () => {
+        await router.swap(b, _.ETH, token1.address, {from:acc, value: b})
+    })
+    it(`It should sell TKN1 to TKN2 from ${acc}`, async () => {
+        await router.swap(b, token1.address, token2.address)
+    })
+}
+
+async function swapFailR1(acc, b) {
     it("It should revert for old router", async () => {
         await truffleAssert.reverts(vRouter.buy(b, _.ETH));
     })
 }
-
-async function voteDao() {
-    it("It should vote", async () => {
-        vDao2 = await VDAO.new(vether.address, utils.address)
-        await vDao2.setGenesisRouter(vRouter2.address)
-        console.log(`vDao2: ${vDao2.address}`)
-        await vDao.voteDaoChange(vDao2.address, { from: acc0 })
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc0)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
-        console.log(`proposedDao: ${await vDao.proposedDao()}`)
-        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
-        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
-    })
-    it("It should vote again", async () => {
-        await vDao.voteDaoChange(vDao2.address, { from: acc1 })
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
-        console.log(`proposedDao: ${await vDao.proposedDao()}`)
-        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
-        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
+async function swapFailR2(acc, b) {
+    it("It should revert for old router", async () => {
+        await truffleAssert.reverts(vRouter2.buy(b, _.ETH));
     })
 }
 
-async function tryToMoveDao() {
-    it("It should revert for address(0)", async () => {
-        await truffleAssert.reverts(vDao.moveRouter());
-    })
-    it("It should move again", async () => {
-        await vDao.moveDao()
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
-        console.log(`proposedDao: ${await vDao.proposedDao()}`)
-        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
-        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
-        console.log(`daoHasMoved: ${await vDao.daoHasMoved()}`)
-        console.log(`VDAO: ${await vDao.VDAO()}`)
-    })
-    it("It should try to move again", async () => {
-        await sleep(2000)
-        await vDao.moveDao()
-        console.log(`mapAddress_Votes: ${await vDao.mapAddress_Votes(vDao2.address)}`)
-        console.log(`mapAddressMember_Votes: ${await vDao.mapAddressMember_Votes(vDao2.address, acc1)}`)
-        console.log(`hasQuorum: ${await vDao.hasQuorum(vDao2.address)}`)
-        console.log(`proposedDao: ${await vDao.proposedDao()}`)
-        console.log(`proposedDaoChange: ${await vDao.proposedDaoChange()}`)
-        console.log(`daoChangeStart: ${await vDao.daoChangeStart()}`)
-        console.log(`daoHasMoved: ${await vDao.daoHasMoved()}`)
-        console.log(`VDAO: ${await vDao.VDAO()}`)
+async function unlockETH(acc) {
+    it("It should unlock", async () => {
+        let balance = await vPoolETH.balanceOf(acc)
+        // await vPoolETH.approve(vDao.address, balance, { from: acc })
+        await vDao.unlock(vPoolETH.address, { from: acc })
+        console.log(`wasMember: ${await vDao.wasMember(acc)}`)
+        console.log(`mapMemberPool_Balance: ${await vDao.mapMemberPool_Balance(acc, _.ETH)}`)
+        console.log(`totalWeight: ${await vDao.totalWeight()}`)
+        console.log(`mapMember_Weight: ${await vDao.mapMember_Weight(acc)}`)
     })
 }
+
+async function unlockTKN(acc) {
+    it("It should unlock", async () => {
+        let balance = await vPoolTKN1.balanceOf(acc)
+        // console.log(`balance: ${balance}`)
+        // await vPoolTKN1.approve(vDao.address, balance, { from: acc })
+        await vDao.unlock(vPoolTKN1.address, { from: acc })
+        console.log(`wasMember: ${await vDao.wasMember(acc)}`)
+        console.log(`mapMemberPool_Balance: ${await vDao.mapMemberPool_Balance(acc, _.ETH)}`)
+        console.log(`totalWeight: ${await vDao.totalWeight()}`)
+        console.log(`mapMember_Weight: ${await vDao.mapMember_Weight(acc)}`)
+    })
+}
+
+async function unstake2() {
+    it("It should unstake ETH", async () => {
+        await vRouter3.unstake(10000, _.ETH)
+    })
+    it("It should unstake TKN1", async () => {
+        await vRouter3.unstake(10000, token1.address)
+    })
+    it("It should unstake TKN2", async () => {
+        await vRouter3.unstake(10000, token2.address)
+    })
+}
+

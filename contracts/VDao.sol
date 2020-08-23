@@ -11,11 +11,12 @@ interface iVROUTER {
     function isPool(address) external view returns(bool);
 }
 interface iVPOOL {
-    function getBaseAmtStaked(address) external view returns(uint);
+    function TOKEN() external view returns(address);
     function transferTo(address, uint) external returns (bool);
 }
 interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+    function getPoolShare(address token, uint units) external view returns(uint baseAmt);
 }
 interface iVADER {
     function changeIncentiveAddress(address) external returns(bool);
@@ -92,6 +93,7 @@ contract VDao {
     mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_Balance; // Member's balance in pool
     mapping(address => uint256) public mapMember_Weight; // Value of weight
+    mapping(address => mapping(address => uint256)) public mapMemberPool_Weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_Block;
 
     mapping(address => uint256) public mapAddress_Votes; // Value of weight
@@ -148,7 +150,7 @@ contract VDao {
     function unlock(address pool) public nonReentrant {
         uint256 balance = mapMemberPool_Balance[msg.sender][pool];
         require(balance > 0, "Must have a balance to weight");
-        zeroWeight(pool, msg.sender);
+        reduceWeight(pool, msg.sender);
         require(iERC20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
         emit MemberUnlocks(msg.sender, pool, balance);
     }
@@ -160,16 +162,21 @@ contract VDao {
     }
 
     function updateWeight(address pool, address member) public returns(uint){
-        totalWeight = totalWeight.sub(mapMember_Weight[member]); // Remove previous weights
-        uint weight = iVPOOL(pool).getBaseAmtStaked(member);
-        mapMember_Weight[member] = weight;
+        totalWeight = totalWeight.sub(mapMemberPool_Weight[member][pool]); // Remove previous weights
+        mapMember_Weight[member] = mapMember_Weight[member].sub(mapMemberPool_Weight[member][pool]);
+        mapMemberPool_Weight[member][pool] = 0;
+        uint weight = UTILS.getPoolShare(iVPOOL(pool).TOKEN(), mapMemberPool_Balance[member][pool]);
+        mapMemberPool_Weight[member][pool] = weight;
+        mapMember_Weight[member] += weight;
         totalWeight += weight;
         return weight;
     }
-    function zeroWeight(address pool, address member) internal {
+    function reduceWeight(address pool, address member) internal {
+        uint weight = mapMemberPool_Weight[member][pool];
         mapMemberPool_Balance[member][pool] = 0; // Zero out balance
-        totalWeight = totalWeight.sub(mapMember_Weight[member]); // Remove that weight
-        mapMember_Weight[member] = 0; // Zero out balance
+        mapMemberPool_Weight[member][pool] = 0; // Zero out weight
+        totalWeight = totalWeight.sub(weight); // Remove that weight
+        mapMember_Weight[member] = mapMember_Weight[member].sub(weight); // Reduce weight
     }
 
     //============================== GOVERNANCE ================================//
@@ -192,7 +199,7 @@ contract VDao {
     }
 
     function moveRouter() public nonReentrant {
-        require(proposedRouter != address(0));
+        require(proposedRouter != address(0), "No router proposed");
         checkRouterChange(proposedRouter);
         if(proposedRouterChange){
             if((now - routerChangeStart) > coolOffPeriod){
@@ -226,7 +233,7 @@ contract VDao {
         }
     }
     function moveDao() public nonReentrant{
-        require(proposedDao != address(0));
+        require(proposedDao != address(0), "No DAO proposed");
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
             if((now - daoChangeStart) > coolOffPeriod){
@@ -295,16 +302,6 @@ contract VDao {
         uint weight = mapMember_Weight[member];
         uint reserve = iERC20(VADER).balanceOf(address(this));
         return UTILS.calcShare(weight, totalWeight, reserve);
-    }
-
-    //============================== HELPERS ================================//
-    // Sync a member
-    function syncMemberPool(address member, address pool) public returns(uint){
-        totalWeight = totalWeight.sub(mapMember_Weight[member]);
-        uint weight = iVPOOL(pool).getBaseAmtStaked(member);
-        mapMember_Weight[member] = weight;
-        totalWeight += weight;
-        return weight;
     }
 
 }

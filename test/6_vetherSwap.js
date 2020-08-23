@@ -55,13 +55,19 @@ contract('BASE', function (accounts) {
     swapETHToTKN2(acc0, _.BN2Str(_.one * 1))
     // checkDetails()
 
+    unstakeAsym(5000, acc1, false)
+    unstakeAsym(5000, acc1, true)
     unstakeETH(10000, acc1)
+    unstakeFailExactAsym(10000, acc0, true)
+    unstakeFailExactAsym(10000, acc0, false)
+    unstakeETH(10000, acc0)
+
     // checkDetails()
     unstakeTKN1(10000, acc1)
     // checkDetails()
     unstakeTKN2(10000, acc1)
     // checkDetails()
-    unstakeETH(10000, acc0)
+    
     // checkDetails()
     unstakeTKN1(10000, acc0)
     // checkDetails()
@@ -165,30 +171,30 @@ async function stake(acc, b, t) {
         let token = _.ETH
         let vPool = vPoolETH
         let poolData = await utils.getPoolData(token);
-        var S = _.getBN(poolData.baseAmt)
+        var B = _.getBN(poolData.baseAmt)
         var T = _.getBN(poolData.tokenAmt)
         poolUnits = _.getBN((await vPool.totalSupply()))
-        console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
+        console.log('start data', _.BN2Str(B), _.BN2Str(T), _.BN2Str(poolUnits))
 
         let _b = (_.getBN(b)).times(0.999)
 
-        let units = math.calcStakeUnits(t, T.plus(t), _b, S.plus(_b))
-        console.log(_.BN2Str(units), _.BN2Str(_b), _.BN2Str(S.plus(_b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
+        let units = math.calcStakeUnits(t, T.plus(t), _b, B.plus(_b))
+        console.log(_.BN2Str(units), _.BN2Str(_b), _.BN2Str(B.plus(_b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
         
         let tx = await vRouter.stake(b, t, token, { from: acc, value: t })
         poolData = await utils.getPoolData(token);
-        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(_b)))
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(_b)))
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
-        assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(_b)))
+        assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(B.plus(_b)))
         assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
         assert.equal(_.BN2Str((await vPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
         assert.equal(_.BN2Str(await vPool.balanceOf(acc)), _.BN2Str(units), 'units')
-        assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vether balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(B.plus(_b)), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
-        let memberData = (await utils.getMemberData(token, acc))
-        assert.equal(memberData.baseAmtStaked, _b, 'baseAmt')
-        assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
+        // let memberData = (await utils.getMemberData(token, acc))
+        // assert.equal(memberData.baseAmtStaked, _b, 'baseAmt')
+        // assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(vPool.address));
         const vaderBal = _.BN2Token(await vether.balanceOf(vPool.address));
@@ -211,30 +217,30 @@ async function stakeTKN2(acc, t, b) {
 
 async function _stakeTKN(acc, t, b, token, vPool) {
     let poolData = await utils.getPoolData(token.address);
-    var S = _.getBN(poolData.baseAmt)
+    var B = _.getBN(poolData.baseAmt)
     var T = _.getBN(poolData.tokenAmt)
     poolUnits = _.getBN((await vPool.totalSupply()))
-    console.log('start data', _.BN2Str(S), _.BN2Str(T), _.BN2Str(poolUnits))
+    console.log('start data', _.BN2Str(B), _.BN2Str(T), _.BN2Str(poolUnits))
 
     let _b = (_.getBN(b)).times(0.999)
 
-    let units = math.calcStakeUnits(t, T.plus(t), _b, S.plus(_b))
-    console.log(_.BN2Str(units), _.BN2Str(_b), _.BN2Str(S.plus(_b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
+    let units = math.calcStakeUnits(t, T.plus(t), _b, B.plus(_b))
+    console.log(_.BN2Str(units), _.BN2Str(_b), _.BN2Str(B.plus(_b)), _.BN2Str(t), _.BN2Str(T.plus(t)))
     
     let tx = await vRouter.stake(b, t, token.address, { from: acc})
     poolData = await utils.getPoolData(token.address);
-    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(S.plus(_b)))
+    assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(_b)))
     assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.plus(t)))
-    assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(S.plus(_b)))
+    assert.equal(_.BN2Str(poolData.baseAmtStaked), _.BN2Str(B.plus(_b)))
     assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
     assert.equal(_.BN2Str((await vPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
     assert.equal(_.BN2Str(await vPool.balanceOf(acc)), _.BN2Str(units), 'units')
-    assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vether balance')
+    assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(B.plus(_b)), 'vether balance')
     assert.equal(_.BN2Str(await token.balanceOf(vPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
-    let memberData = (await utils.getMemberData(token.address, acc))
-    assert.equal(memberData.baseAmtStaked, _b, 'baseAmt')
-    assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
+    // let memberData = (await utils.getMemberData(token.address, acc))
+    // assert.equal(memberData.baseAmtStaked, _b, 'baseAmt')
+    // assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(vPool.address));
     const vaderBal = _.BN2Token(await vether.balanceOf(vPool.address));
@@ -434,10 +440,10 @@ async function unstakeETH(bp, acc) {
         console.log('poolAge-ETH', _.BN2Str(poolAge))
         let poolAPY = await utils.getPoolAPY(_.ETH)
         console.log('poolAPY-ETH', _.BN2Str(poolAPY))
-        let memberROI0 = await utils.getMemberROI(_.ETH, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(_.ETH, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(_.ETH, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(_.ETH, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         let poolData = await utils.getPoolData(_.ETH);
         var B = _.getBN(poolData.baseAmt)
@@ -477,6 +483,89 @@ async function unstakeETH(bp, acc) {
     })
 }
 
+async function unstakeAsym(bp, acc, toBase) {
+
+    it(`It should assym unstake from ${acc}`, async () => {
+        let token = _.ETH
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmt)
+        var T = _.getBN(poolData.tokenAmt)
+        console.log(poolData)
+        let totalUnits = _.getBN((await vPoolETH.totalSupply()))
+        let stakerUnits = _.getBN(await vPoolETH.balanceOf(acc))
+        let share = (stakerUnits.times(bp)).div(10000)
+
+        // console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(B), bp, toBase)
+
+        let b; let t;
+        if(toBase){
+            b = math.calcAsymmetricShare(share, totalUnits, B)
+            t = 0
+        } else {
+            b = 0
+            t = math.calcAsymmetricShare(share, totalUnits, T)
+        }
+
+        let tx = await vRouter.unstakeAsymmetric(bp, toBase, token, { from: acc})
+        poolData = await utils.getPoolData(token);
+        console.log(poolData)
+        // console.log(tx.receipt.logs)
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(b), 'outputVader')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await vPoolETH.totalSupply())), totalUnits.minus(share), 'poolUnits')
+
+        assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.minus(b)))
+        assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vader balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
+
+        let stakerUnits2 = _.getBN(await vPoolETH.balanceOf(acc))
+        assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+    })
+}
+
+async function unstakeExactAsym(bp, acc, toBase) {
+
+    it(`It should assym unstake from ${acc}`, async () => {
+        let token = _.ETH
+        let poolData = await utils.getPoolData(token);
+        var B = _.getBN(poolData.baseAmt)
+        var T = _.getBN(poolData.tokenAmt)
+
+        let totalUnits = _.getBN((await vPoolETH.totalSupply()))
+        let stakerUnits = _.getBN(await vPoolETH.balanceOf(acc))
+        let share = (stakerUnits.times(bp)).div(10000)
+
+        let t; let b;
+        if(toBase){
+            t = 0
+            b = math.calcAsymmetricShare(share, totalUnits, B)
+        } else {
+            t = math.calcAsymmetricShare(share, totalUnits, T)
+            b = 0
+        }
+
+        let tx = await vRouter.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc})
+        poolData = await utils.getPoolData(token);
+
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(b), 'outputVader')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputToken), _.BN2Str(t), 'outputToken')
+        assert.equal(_.BN2Str(tx.receipt.logs[0].args.unitsClaimed), _.BN2Str(share), 'unitsClaimed')
+
+        assert.equal(_.BN2Str((await vPoolETH.totalSupply())), totalUnits.minus(share), 'poolUnits')
+
+        assert.equal(_.BN2Str(poolData.baseAmt), B.minus(b))
+        assert.equal(_.BN2Str(poolData.tokenAmt), T.minus(t))
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vader balance')
+        assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
+
+        let stakerUnits2 = _.getBN(await vPoolETH.balanceOf(acc))
+        assert.equal(_.BN2Str(stakerUnits2), _.BN2Str(stakerUnits.minus(share)), 'stakerUnits')
+    })
+}
+
 async function unstakeTKN1(bp, acc) {
 
     it(`It should unstake TKN1 for ${acc}`, async () => {
@@ -487,14 +576,24 @@ async function unstakeTKN1(bp, acc) {
         console.log('poolAge-TKN1', _.BN2Str(poolAge))
         let poolAPY = await utils.getPoolAPY(token1.address)
         console.log('poolAPY-TKN1', _.BN2Str(poolAPY))
-        let memberROI0 = await utils.getMemberROI(token1.address, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(token1.address, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(token1.address, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(token1.address, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         await _unstakeTKN(bp, acc, vPoolTKN1, token1)
         await help.logPool(utils, token1.address, 'TKN1')
 
+    })
+}
+
+async function unstakeFailExactAsym(bp, acc, toBase) {
+
+    it(`It should assym unstake from ${acc}`, async () => {
+        let stakerUnits = _.getBN(await vPoolETH.balanceOf(acc))
+        let share = (stakerUnits.times(bp)).div(10000)
+
+        await truffleAssert.reverts(vRouter.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc}))
     })
 }
 
@@ -508,10 +607,10 @@ async function unstakeTKN2(bp, acc) {
         let poolAPY = await utils.getPoolAPY(token2.address)
         console.log('poolAPY-TKN2', _.BN2Str(poolAPY))
 
-        let memberROI0 = await utils.getMemberROI(token2.address, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(token2.address, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(token2.address, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(token2.address, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         await _unstakeTKN(bp, acc, vPoolTKN2, token2)
         await help.logPool(utils, token2.address, 'TKN2')

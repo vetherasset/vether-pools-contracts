@@ -34,18 +34,6 @@ interface iVDAO {
     function ROUTER() external view returns(address);
 }
 
-// interface iVROUTER {
-//     function totalStaked() external view returns (uint);
-//     function totalVolume() external view returns (uint);
-//     function totalFees() external view returns (uint);
-//     function unstakeTx() external view returns (uint);
-//     function stakeTx() external view returns (uint);
-//     function swapTx() external view returns (uint);
-//     function tokenCount() external view returns(uint);
-//     function getToken(uint) external view returns(address);
-//     function getPool(address) external view returns(address payable);
-// }
-
 // SafeMath
 library SafeMath {
 
@@ -109,9 +97,6 @@ contract VPool_Vether is iERC20 {
     uint public volume;
     uint public txCount;
     
-    mapping(address => uint) private member_baseAmtStaked;
-    mapping(address => uint) private member_tokenAmtStaked;
-   
     // Only Router can execute
     modifier onlyRouter() {
         _isRouter();
@@ -119,7 +104,6 @@ contract VPool_Vether is iERC20 {
     }
 
     function _isRouter() internal view {
-        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         require(msg.sender == VDAO.ROUTER(), "RouterErr");
     }
 
@@ -130,21 +114,28 @@ contract VPool_Vether is iERC20 {
         TOKEN = _token;
         VDAO = _vDao;
 
+        string memory poolName = "VetherPoolV1-";
+        string memory poolSymbol = "VPT1-";
+
         if(_token == address(0)){
-            _name = "VetherPoolV1-Ethereum";
-            _symbol = "VPT1-ETH";
+            _name = string(abi.encodePacked(poolName, "Ethereum"));
+            _symbol = string(abi.encodePacked(poolSymbol, "ETH"));
         } else {
-            string memory tokenName = iERC20(_token).name();
-            _name = string(abi.encodePacked("VetherPoolV1-", tokenName));
-            string memory tokenSymbol = iERC20(_token).symbol();
-            _symbol = string(abi.encodePacked("VPT1-", tokenSymbol));
-            iERC20(_token).approve(VDAO.ROUTER(), (2**256)-1);
+            _name = string(abi.encodePacked(poolName, iERC20(_token).name()));
+            _symbol = string(abi.encodePacked(poolSymbol, iERC20(_token).symbol()));
         }
         
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][VDAO.ROUTER()] = (2**256)-1;
+    }
+
+    function _checkApprovals() external onlyRouter{
+        if(iERC20(VETHER).allowance(address(this), VDAO.ROUTER()) == 0){
+            if(TOKEN != address(0)){
+                iERC20(TOKEN).approve(VDAO.ROUTER(), (2**256)-1);
+            }
         iERC20(VETHER).approve(VDAO.ROUTER(), (2**256)-1);
+        }
     }
 
     receive() external payable {}
@@ -209,6 +200,10 @@ contract VPool_Vether is iERC20 {
     function burnFrom(address from, uint256 value) public virtual {
         require(value <= _allowances[from][msg.sender], 'AllowanceErr');
         _allowances[from][msg.sender] = _allowances[from][msg.sender].sub(value);
+        __burn(from, value);
+    }
+    // Router can burn
+    function _burn(address from, uint256 value) external onlyRouter {
         __burn(from, value);
     }
     function __burn(address account, uint256 amount) internal virtual {
@@ -288,19 +283,6 @@ contract VPool_Vether is iERC20 {
         tokenAmt = tokenAmt.sub(_tokenAmt); 
     }
 
-    function _addMemberData(address _member, uint _baseAmtStaked, uint _tokenAmtStaked)  external onlyRouter  {
-        member_baseAmtStaked[_member] += _baseAmtStaked;
-        member_tokenAmtStaked[_member] += _tokenAmtStaked;
-    }
-
-    function _removeDataForMember(address _member, uint _units)  external onlyRouter {
-        uint stakeUnits = balanceOf(_member);
-        uint _baseAmt = UTILS.calcShare(_units, stakeUnits, member_baseAmtStaked[_member]);
-        uint _tokenAmt = UTILS.calcShare(_units, stakeUnits, member_tokenAmtStaked[_member]);
-        member_baseAmtStaked[_member] = member_baseAmtStaked[_member].sub(_baseAmt);
-        member_tokenAmtStaked[_member] = member_tokenAmtStaked[_member].sub(_tokenAmt);
-    }
-
     function _addPoolMetrics(uint _volume, uint _fee) external onlyRouter  {
         txCount += 1;
         volume += _volume;
@@ -309,13 +291,6 @@ contract VPool_Vether is iERC20 {
 
     //==================================================================================//
     // Helper functions
-
-    function getBaseAmtStaked(address member) public view returns(uint){
-        return member_baseAmtStaked[member];
-    }
-    function getTokenAmtStaked(address member) public view returns(uint){
-        return member_tokenAmtStaked[member];
-    }
 
     function calcValueInBase(uint a) public view returns (uint value){
        return (a.mul(baseAmt)).div(tokenAmt);
@@ -368,10 +343,10 @@ contract VRouter_Vether {
         _;
     }
 
-    constructor (address _vader, address _vDao, iUTILS _utils) public payable {
-        VETHER = _vader; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
+    constructor (address _vader, address _vDao, address _utils) public payable {
+        VETHER = _vader;
         VDAO = iVDAO(_vDao);
-        UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
+        UTILS = iUTILS(_utils);
         DEPLOYER = msg.sender;
         VETH_CAP = 20000*10**18;
     }
@@ -389,10 +364,15 @@ contract VRouter_Vether {
         uint tokenCount = VRouter_Vether(oldRouter).tokenCount();
         for(uint i = 0; i<tokenCount; i++){
             address token = VRouter_Vether(oldRouter).getToken(i);
-            isPool[token] = true;
+            address payable pool = VRouter_Vether(oldRouter).getPool(token);
+            isPool[pool] = true;
             arrayTokens.push(token);
-            mapToken_Pool[token] = VRouter_Vether(oldRouter).getPool(token);
+            mapToken_Pool[token] = pool;
         }
+    }
+
+    function updateDAO(address _vDao) public onlyDeployer {
+        VDAO = iVDAO(_vDao);
     }
 
     function setCap(uint veth_cap) public onlyDeployer {
@@ -443,10 +423,10 @@ contract VRouter_Vether {
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
         require(totalStaked.add(_baseAmt) <= VETH_CAP, "Exceeds cap");
+        VPool_Vether(pool)._checkApprovals();
         uint _S = VPool_Vether(pool).baseAmt().add(_baseAmt);
         uint _A = VPool_Vether(pool).tokenAmt().add(_tokenAmt);
         VPool_Vether(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        VPool_Vether(pool)._addMemberData(_member, _baseAmt, _tokenAmt);
         _units = UTILS.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
         VPool_Vether(pool)._mint(_member, _units);
         return _units;
@@ -498,9 +478,9 @@ contract VRouter_Vether {
     }
 
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
+        VPool_Vether(pool)._checkApprovals();
         VPool_Vether(pool)._decrementPoolBalances(_outputBase, _outputToken);
-        VPool_Vether(pool)._removeDataForMember(_member, _units);
-        VPool_Vether(pool).burnFrom(_member, _units);
+        VPool_Vether(pool)._burn(_member, _units);
         return true;
     } 
 
@@ -513,9 +493,9 @@ contract VRouter_Vether {
     }
     function buyTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
+        VPool_Vether(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(VETHER, amount, pool);
         (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
-        // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
         totalFees += VPool_Vether(pool).calcValueInBase(fee);
@@ -531,9 +511,9 @@ contract VRouter_Vether {
     }
     function sellTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
+        VPool_Vether(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(token, amount, pool);
         (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
-        // addDividend(pool, outputAmount, fee);
         totalStaked = totalStaked.sub(outputAmount);
         totalVolume += outputAmount;
         totalFees += fee;
@@ -546,27 +526,25 @@ contract VRouter_Vether {
     function swap(uint inputAmount, address fromToken, address toToken) public payable returns (uint outputAmount, uint fee) {
         require(fromToken != toToken, "InputErr");
         address payable poolFrom = getPool(fromToken); address payable poolTo = getPool(toToken);
+        VPool_Vether(poolFrom)._checkApprovals();
+        VPool_Vether(poolTo)._checkApprovals();
         uint _actualAmount = _handleTransferIn(fromToken, inputAmount, poolFrom);
         uint _transferAmount = 0;
         if(fromToken == VETHER){
             (outputAmount, fee) = _swapBaseToToken(poolFrom, _actualAmount);      // Buy to token
             totalStaked += _actualAmount;
             totalVolume += _actualAmount;
-            // addDividend(poolFrom, outputAmount, fee);
         } else if(toToken == VETHER) {
             (outputAmount, fee) = _swapTokenToBase(poolFrom,_actualAmount);   // Sell to token
             totalStaked = totalStaked.sub(outputAmount);
             totalVolume += outputAmount;
-            // addDividend(poolFrom, outputAmount, fee);
         } else {
             (uint _yy, uint _feey) = _swapTokenToBase(poolFrom, _actualAmount);             // Sell to VETHER
-            totalVolume += _yy; totalFees += _feey;
-            // addDividend(poolFrom, _yy, _feey);
-            // iERC20(VETHER).transferFrom(poolFrom, poolTo, _yy); 
             uint _actualYY = _handleTransferOver(VETHER, poolFrom, poolTo, _yy);
+            totalStaked = totalStaked.add(_actualYY).sub(_actualAmount);
+            totalVolume += _yy; totalFees += _feey;
             (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _actualYY);              // Buy to token
             totalFees += VPool_Vether(poolTo).calcValueInBase(_feez);
-            // addDividend(poolTo, _zz, _feez);
             _transferAmount = _actualYY; outputAmount = _zz; 
             fee = _feez + VPool_Vether(poolTo).calcValueInToken(_feey);
         }
@@ -605,47 +583,6 @@ contract VRouter_Vether {
             VPool_Vether(pool)._addPoolMetrics(_txBase, _feeBase);
         }
     }
-
-
-    //==================================================================================//
-    // Revenue Functions
-
-    // Every swap after every Era, updates the balance
-    // Every swap takes 1000th of the reserve, adds it baseAmt balance
-    // Every swap charges 30 BP from swapper, burns it
-
-    // function _checkEmission() private {
-    //     if (now >= nextEraTime) {                                                           // If new Era and allowed to emit
-    //         currentEra += 1;                                                               // Increment Era
-    //         nextEraTime = now + iVADER(VETHER).secondsPerEra() + 100;                     // Set next Era time
-    //         syncReserve();
-    //         emit NewEra(currentEra, nextEraTime, reserve);                               // Emit Event
-    //     }
-    // }
-
-    // function syncReserves() public {
-    //     reserve = iERC20(VETHER).balanceOf(address(this));
-    //     // burn income
-    // }
-
-    // function payDividends(address token) public {
-    //     uint dividend = getDividend(token);
-    //     reserve = reserve.sub(dividend);
-    //     VPool_Vether(pool).add(VETHER, dividend);
-    // }
-
-    // function getSwapShare(uint amount, uint fee) public view returns(uint share) {
-    //     uint dayCount = UTILS.getPoolAge(address(0));
-    //     uint txPerDay = swapTx.div(dayCount); // Average tx per day, eg 200
-    //     uint txShare = reserve.div(txPerDay); // txShare is reserve / 200 
-    //     return txShare.mul(fee).div(amount); // 10% slip -> 10% of txShare
-    // }
-
-    // function addDividend(address payable pool, uint outputAmount, uint fee) private {
-    //     uint dividend = getSwapShare(outputAmount, fee);
-    //     reserve = reserve.sub(dividend);
-    //     VPool_Vether(pool).add(VETHER, dividend);
-    // }
 
     //==================================================================================//
     // Token Transfer Functions

@@ -2,19 +2,13 @@
   "contractName": "iVPOOL",
   "abi": [
     {
-      "inputs": [
+      "inputs": [],
+      "name": "TOKEN",
+      "outputs": [
         {
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "name": "getBaseAmtStaked",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",

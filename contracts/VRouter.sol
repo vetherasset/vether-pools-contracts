@@ -129,21 +129,29 @@ contract VPool is iERC20 {
         TOKEN = _token;
         iVDAO vdao = iVDAO(iVADER(VADER).DAO());
 
+        string memory poolName = "VetherPoolV1-";
+        string memory poolSymbol = "VPT1-";
+
         if(_token == address(0)){
-            _name = "VaderPoolV1-Ethereum";
-            _symbol = "VPT1-ETH";
+            _name = string(abi.encodePacked(poolName, "Ethereum"));
+            _symbol = string(abi.encodePacked(poolSymbol, "ETH"));
         } else {
-            string memory tokenName = iERC20(_token).name();
-            _name = string(abi.encodePacked("VaderPoolV1-", tokenName));
-            string memory tokenSymbol = iERC20(_token).symbol();
-            _symbol = string(abi.encodePacked("VPT1-", tokenSymbol));
-            iERC20(_token).approve(vdao.ROUTER(), (2**256)-1);
+            _name = string(abi.encodePacked(poolName, iERC20(_token).name()));
+            _symbol = string(abi.encodePacked(poolSymbol, iERC20(_token).symbol()));
         }
         
         decimals = 18;
         genesis = now;
-        _allowances[address(this)][vdao.ROUTER()] = (2**256)-1;
+    }
+
+    function _checkApprovals() external onlyRouter{
+        iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        if(iERC20(VADER).allowance(address(this), vdao.ROUTER()) == 0){
+            if(TOKEN != address(0)){
+                iERC20(TOKEN).approve(vdao.ROUTER(), (2**256)-1);
+            }
         iERC20(VADER).approve(vdao.ROUTER(), (2**256)-1);
+        }
     }
 
     receive() external payable {}
@@ -389,9 +397,10 @@ contract VRouter {
         uint tokenCount = VRouter(oldRouter).tokenCount();
         for(uint i = 0; i<tokenCount; i++){
             address token = VRouter(oldRouter).getToken(i);
-            isPool[token] = true;
+            address payable pool = VRouter(oldRouter).getPool(token);
+            isPool[pool] = true;
             arrayTokens.push(token);
-            mapToken_Pool[token] = VRouter(oldRouter).getPool(token);
+            mapToken_Pool[token] = pool;
         }
     }
 
@@ -438,6 +447,7 @@ contract VRouter {
 
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
+        VPool(pool)._checkApprovals();
         uint _S = VPool(pool).baseAmt().add(_baseAmt);
         uint _A = VPool(pool).tokenAmt().add(_tokenAmt);
         VPool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
@@ -493,6 +503,7 @@ contract VRouter {
     }
 
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
+        VPool(pool)._checkApprovals();
         VPool(pool)._decrementPoolBalances(_outputBase, _outputToken);
         VPool(pool)._removeDataForMember(_member, _units);
         VPool(pool).burnFrom(_member, _units);
@@ -508,6 +519,7 @@ contract VRouter {
     }
     function buyTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
+        VPool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(VADER, amount, pool);
         (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
@@ -526,6 +538,7 @@ contract VRouter {
     }
     function sellTo(uint amount, address token, address payable member) public payable returns (uint outputAmount, uint fee) {
         address payable pool = getPool(token);
+        VPool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(token, amount, pool);
         (outputAmount, fee) = _swapTokenToBase(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
@@ -541,6 +554,8 @@ contract VRouter {
     function swap(uint inputAmount, address fromToken, address toToken) public payable returns (uint outputAmount, uint fee) {
         require(fromToken != toToken, "InputErr");
         address payable poolFrom = getPool(fromToken); address payable poolTo = getPool(toToken);
+        VPool(poolFrom)._checkApprovals();
+        VPool(poolTo)._checkApprovals();
         uint _actualAmount = _handleTransferIn(fromToken, inputAmount, poolFrom);
         uint _transferAmount = 0;
         if(fromToken == VADER){

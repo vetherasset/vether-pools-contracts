@@ -211,7 +211,7 @@ async function unstakeETH(bp, acc) {
     })
 }
 
-async function unstakeAsym(bp, acc, toSeth) {
+async function unstakeAsym(bp, acc, toBase) {
 
     it(`It should assym unstake from ${acc}`, async () => {
         let token = _.ETH
@@ -223,10 +223,10 @@ async function unstakeAsym(bp, acc, toSeth) {
         let stakerUnits = _.getBN(await vaderPools.balanceOf(acc))
         let share = (stakerUnits.times(bp)).div(10000)
 
-        // console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(S), bp, toSeth)
+        // console.log(_.BN2Str(share), _.BN2Str(totalUnits), _.BN2Str(S), bp, toBase)
 
         let a; let s;
-        if(toSeth){
+        if(toBase){
             s = math.calcAsymmetricShare(share, totalUnits, S)
             a = 0
         } else {
@@ -234,7 +234,7 @@ async function unstakeAsym(bp, acc, toSeth) {
             a = math.calcAsymmetricShare(share, totalUnits, A)
         }
 
-        let tx = await vRouter.unstakeAsymmetric(bp, toSeth, _.ETH, { from: acc})
+        let tx = await vRouter.unstakeAsymmetric(bp, toBase, _.ETH, { from: acc})
         poolData = await utils.getPoolData(token);
         // console.log(poolData)
         // console.log(tx.receipt.logs)
@@ -256,7 +256,7 @@ async function unstakeAsym(bp, acc, toSeth) {
     })
 }
 
-async function unstakeExactAsym(bp, acc, toSeth) {
+async function unstakeExactAsym(bp, acc, toBase) {
 
     it(`It should assym unstake from ${acc}`, async () => {
         let token = _.ETH
@@ -269,7 +269,7 @@ async function unstakeExactAsym(bp, acc, toSeth) {
         let share = (stakerUnits.times(bp)).div(10000)
 
         let a; let v;
-        if(toSeth){
+        if(toBase){
             a = 0
             v = math.calcAsymmetricShare(share, totalUnits, S)
         } else {
@@ -277,7 +277,7 @@ async function unstakeExactAsym(bp, acc, toSeth) {
             v = 0
         }
 
-        let tx = await vRouter.unstakeExactAsymmetric(share, toSeth, _.ETH, { from: acc})
+        let tx = await vRouter.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc})
         poolData = await utils.getPoolData(token);
 
         assert.equal(_.BN2Str(tx.receipt.logs[0].args.outputBase), _.BN2Str(v), 'outputVader')
@@ -298,13 +298,13 @@ async function unstakeExactAsym(bp, acc, toSeth) {
     })
 }
 
-async function unstakeFailExactAsym(bp, acc, toSeth) {
+async function unstakeFailExactAsym(bp, acc, toBase) {
 
     it(`It should assym unstake from ${acc}`, async () => {
         let stakerUnits = _.getBN(await vaderPools.balanceOf(acc))
         let share = (stakerUnits.times(bp)).div(10000)
 
-        await truffleAssert.reverts(vRouter.unstakeExactAsymmetric(share, toSeth, _.ETH, { from: acc}))
+        await truffleAssert.reverts(vRouter.unstakeExactAsymmetric(share, toBase, _.ETH, { from: acc}))
     })
 }
 

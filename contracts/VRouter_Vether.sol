@@ -343,9 +343,7 @@ contract VRouter_Vether {
     iUTILS public UTILS;
     address public DEPLOYER;
 
-    // uint256 public currentEra;
-    // uint256 public nextEraTime;
-    // uint256 public reserve;
+    uint public VETH_CAP; 
 
     uint public totalStaked; 
     uint public totalVolume;
@@ -375,6 +373,7 @@ contract VRouter_Vether {
         VDAO = iVDAO(_vDao);
         UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
         DEPLOYER = msg.sender;
+        VETH_CAP = 20000*10**18;
     }
 
     function migrateRouterData(address oldRouter) public onlyDeployer {
@@ -394,6 +393,10 @@ contract VRouter_Vether {
             arrayTokens.push(token);
             mapToken_Pool[token] = VRouter_Vether(oldRouter).getPool(token);
         }
+    }
+
+    function setCap(uint veth_cap) public onlyDeployer {
+        VETH_CAP = veth_cap;
     }
 
     function purgeDeployer() public onlyDeployer {
@@ -439,6 +442,7 @@ contract VRouter_Vether {
 
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
+        require(totalStaked.add(_baseAmt) <= VETH_CAP, "Exceeds cap");
         uint _S = VPool_Vether(pool).baseAmt().add(_baseAmt);
         uint _A = VPool_Vether(pool).tokenAmt().add(_tokenAmt);
         VPool_Vether(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  

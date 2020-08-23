@@ -69,7 +69,7 @@ contract VDao_Vether {
     address public DEPLOYER;
 
     iUTILS public UTILS;
-    address public VADER;
+    address public VETHER;
 
     uint256 public totalWeight;
     uint public one = 10**18;
@@ -117,7 +117,7 @@ contract VDao_Vether {
     }
 
     constructor (address _vader, iUTILS _utils) public payable {
-        VADER = _vader;
+        VETHER = _vader;
         UTILS = _utils;
         DEPLOYER = msg.sender;
         _status = _NOT_ENTERED;
@@ -230,10 +230,10 @@ contract VDao_Vether {
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
             if((now - daoChangeStart) > coolOffPeriod){
-                // iVADER(VADER).changeIncentiveAddress(proposedDao);
-                // iVADER(VADER).changeDAO(proposedDao);
-                uint reserve = iERC20(VADER).balanceOf(address(this));
-                iERC20(VADER).transfer(proposedDao, reserve);
+                // iVADER(VETHER).changeIncentiveAddress(proposedDao);
+                // iVADER(VETHER).changeDAO(proposedDao);
+                uint reserve = iERC20(VETHER).balanceOf(address(this));
+                iERC20(VETHER).transfer(proposedDao, reserve);
                 daoHasMoved = true;
                 VDAO = proposedDao;
                 emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
@@ -282,7 +282,7 @@ contract VDao_Vether {
     function harvest() public nonReentrant {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
-        iERC20(VADER).transfer(msg.sender, reward);
+        iERC20(VETHER).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
@@ -293,7 +293,7 @@ contract VDao_Vether {
 
     function calcDailyReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
-        uint reserve = iERC20(VADER).balanceOf(address(this));
+        uint reserve = iERC20(VETHER).balanceOf(address(this));
         return UTILS.calcShare(weight, totalWeight, reserve);
     }
 

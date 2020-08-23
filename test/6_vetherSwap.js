@@ -12,14 +12,14 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var VADER = artifacts.require("./Vether.sol");
+var VETHER = artifacts.require("./Vether.sol");
 var VDAO = artifacts.require("./VDao.sol");
 var VROUTER = artifacts.require("./VRouter_Vether.sol");
 var VPOOL = artifacts.require("./VPool_Vether.sol");
 var UTILS = artifacts.require("./Utils_Vether.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
-var vader; var token1;  var token2; var addr1; var addr2;
+var vether; var token1;  var token2; var addr1; var addr2;
 var utils; var vRouter; var vDao;
 var vPoolETH; var vPoolTKN1; var vPoolTKN2;
 var acc0; var acc1; var acc2; var acc3;
@@ -77,30 +77,30 @@ before(async function() {
     acc2 = await accounts[2].getAddress(); 
     acc3 = await accounts[3].getAddress()
 
-    vader = await VADER.new()
-    utils = await UTILS.new(vader.address)
-    vDao = await VDAO.new(vader.address, utils.address)
-    vRouter = await VROUTER.new(vader.address, vDao.address, utils.address)
+    vether = await VETHER.new()
+    utils = await UTILS.new(vether.address)
+    vDao = await VDAO.new(vether.address, utils.address)
+    vRouter = await VROUTER.new(vether.address, vDao.address, utils.address)
     await utils.setGenesisDao(vDao.address)
     await vDao.setGenesisRouter(vRouter.address)
-    console.log(await utils.VADER())
+    console.log(await utils.VETHER())
     console.log(await vDao.ROUTER())
 
     token1 = await TOKEN1.new();
     token2 = await TOKEN1.new();
 
     console.log(`Acc0: ${acc0}`)
-    console.log(`vader: ${vader.address}`)
+    console.log(`vether: ${vether.address}`)
     console.log(`dao: ${vDao.address}`)
     console.log(`utils: ${utils.address}`)
     console.log(`vRouter: ${vRouter.address}`)
     console.log(`token1: ${token1.address}`)
 
-    await vader.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-    await vader.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
-    await vader.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
-    await vader.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
-    await vader.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
+    await vether.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+    await vether.transfer(acc1, _.getBN(_.BN2Str(100000 * _.one)))
+    await vether.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc0 })
+    await vether.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc1 })
+    await vether.approve(vRouter.address, _.BN2Str(500000 * _.one), { from: acc2 })
 
     let supplyT1 = await token1.totalSupply()
     await token1.transfer(acc1, _.getBN(_.BN2Int(supplyT1)/2))
@@ -117,14 +117,14 @@ async function createPool() {
         await vRouter.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
         vPoolETH = await VPOOL.at(POOL)
         console.log(`Pools: ${vPoolETH.address}`)
-        const vaderAddr = await vPoolETH.VADER()
-        assert.equal(vaderAddr, vader.address, "address is correct")
-        assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(_.one * 10 * 0.999), 'vader balance')
+        const vaderAddr = await vPoolETH.VETHER()
+        assert.equal(vaderAddr, vether.address, "address is correct")
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(_.one * 10 * 0.999), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(_.dot1BN), 'ether balance')
 
-        let supply = await vader.totalSupply()
-        await vader.approve(vPoolETH.address, supply, { from: acc0 })
-        await vader.approve(vPoolETH.address, supply, { from: acc1 })
+        let supply = await vether.totalSupply()
+        await vether.approve(vPoolETH.address, supply, { from: acc0 })
+        await vether.approve(vPoolETH.address, supply, { from: acc1 })
     })
 
     it("It should deploy TKN1 Pools", async () => {
@@ -134,11 +134,11 @@ async function createPool() {
         await vRouter.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address)
         vPoolTKN1 = await VPOOL.at(POOL)
         console.log(`Pools1: ${vPoolTKN1.address}`)
-        const vaderAddr = await vPoolTKN1.VADER()
-        assert.equal(vaderAddr, vader.address, "address is correct")
+        const vaderAddr = await vPoolTKN1.VETHER()
+        assert.equal(vaderAddr, vether.address, "address is correct")
 
-        await vader.approve(vPoolTKN1.address, '-1', { from: acc0 })
-        await vader.approve(vPoolTKN1.address, '-1', { from: acc1 })
+        await vether.approve(vPoolTKN1.address, '-1', { from: acc0 })
+        await vether.approve(vPoolTKN1.address, '-1', { from: acc1 })
         await token1.approve(vPoolTKN1.address, '-1', { from: acc0 })
         await token1.approve(vPoolTKN1.address, '-1', { from: acc1 })
     })
@@ -149,11 +149,11 @@ async function createPool() {
         await vRouter.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token2.address)
         vPoolTKN2 = await VPOOL.at(POOL)
         console.log(`Pools2: ${vPoolTKN2.address}`)
-        const vaderAddr = await vPoolTKN2.VADER()
-        assert.equal(vaderAddr, vader.address, "address is correct")
+        const vaderAddr = await vPoolTKN2.VETHER()
+        assert.equal(vaderAddr, vether.address, "address is correct")
 
-        await vader.approve(vPoolTKN2.address, '-1', { from: acc0 })
-        await vader.approve(vPoolTKN2.address, '-1', { from: acc1 })
+        await vether.approve(vPoolTKN2.address, '-1', { from: acc0 })
+        await vether.approve(vPoolTKN2.address, '-1', { from: acc1 })
         await token2.approve(vPoolTKN2.address, '-1', { from: acc0 })
         await token2.approve(vPoolTKN2.address, '-1', { from: acc1 })
     })
@@ -183,7 +183,7 @@ async function stake(acc, b, t) {
         assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
         assert.equal(_.BN2Str((await vPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
         assert.equal(_.BN2Str(await vPool.balanceOf(acc)), _.BN2Str(units), 'units')
-        assert.equal(_.BN2Str(await vader.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vader balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
         let memberData = (await utils.getMemberData(token, acc))
@@ -191,7 +191,7 @@ async function stake(acc, b, t) {
         assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(vPool.address));
-        const vaderBal = _.BN2Token(await vader.balanceOf(vPool.address));
+        const vaderBal = _.BN2Token(await vether.balanceOf(vPool.address));
         console.log(`BALANCES: [ ${tokenBal} ETH | ${vaderBal} SPT ]`)
     })
 }
@@ -229,7 +229,7 @@ async function _stakeTKN(acc, t, b, token, vPool) {
     assert.equal(_.BN2Str(poolData.tokenAmtStaked), _.BN2Str(T.plus(t)))
     assert.equal(_.BN2Str((await vPool.totalSupply())), _.BN2Str(units.plus(poolUnits)), 'poolUnits')
     assert.equal(_.BN2Str(await vPool.balanceOf(acc)), _.BN2Str(units), 'units')
-    assert.equal(_.BN2Str(await vader.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vader balance')
+    assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(S.plus(_b)), 'vether balance')
     assert.equal(_.BN2Str(await token.balanceOf(vPool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
     let memberData = (await utils.getMemberData(token.address, acc))
@@ -237,7 +237,7 @@ async function _stakeTKN(acc, t, b, token, vPool) {
     assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(vPool.address));
-    const vaderBal = _.BN2Token(await vader.balanceOf(vPool.address));
+    const vaderBal = _.BN2Token(await vether.balanceOf(vPool.address));
     console.log(`BALANCES: [ ${tokenBal} ETH | ${vaderBal} SPT ]`)
 }
 
@@ -269,7 +269,7 @@ async function swapBASEToETH(acc, b) {
         assert.equal(_.BN2Str(poolData.baseAmt), _.BN2Str(B.plus(_b)))
 
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
-        assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(B.plus(_b)), 'vader balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.plus(_b)), 'vether balance')
 
         await help.logPool(utils, _.ETH, 'ETH')
     })
@@ -302,7 +302,7 @@ async function swapETHToBASE(acc, t) {
 
 
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.plus(t)), 'ether balance')
-        assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vader balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vether balance')
 
         await help.logPool(utils, token, 'ETH')
     })
@@ -360,8 +360,8 @@ async function _swapTKNToETH(acc, x, token, vPool) {
     assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await token.balanceOf(vPool.address)), _.BN2Str(X.plus(x)), 'token1 balance')
-    assert.equal(_.BN2Str(await vader.balanceOf(vPool.address)), _.BN2Str(Y.minus(y)), 'vader balance')
-    assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(B.plus(_y)), 'vader balance eth')
+    assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(Y.minus(y)), 'vether balance')
+    assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.plus(_y)), 'vether balance eth')
     assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
@@ -415,8 +415,8 @@ async function _swapETHToTKN(acc, x, token, vPool) {
     // assert.equal(_.BN2Str(poolData2.tokenAmt), _.BN2Str(Z.minus(z)))
 
     assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(X.plus(x)), 'token1 balance')
-    assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(Y.minus(y)), 'vader balance')
-    // assert.equal(_.BN2Str(await vader.balanceOf(vPool.address)), _.BN2Str(B.plus(_y)), 'vader balance eth')
+    assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(Y.minus(y)), 'vether balance')
+    // assert.equal(_.BN2Str(await vether.balanceOf(vPool.address)), _.BN2Str(B.plus(_y)), 'vether balance eth')
     // assert.equal(_.BN2Str(await token.balanceOf(vPool.address)), _.BN2Str(Z.minus(z)), 'ether balance')
 
     await help.logPool(utils, token.address, 'TKN1')
@@ -469,7 +469,7 @@ async function unstakeETH(bp, acc) {
         assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
         // assert.equal(_.BN2Str(poolData.vaderStaked), _.BN2Str(B.minus(_b)))
         // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(T.minus(t)))
-        assert.equal(_.BN2Str(await vader.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vader balance')
+        assert.equal(_.BN2Str(await vether.balanceOf(vPoolETH.address)), _.BN2Str(B.minus(b)), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(vPoolETH.address)), _.BN2Str(T.minus(t)), 'ether balance')
 
         let stakerUnits2 = _.getBN(await vPoolETH.balanceOf(acc))
@@ -544,7 +544,7 @@ async function _unstakeTKN(bp, acc, pools, token) {
     assert.equal(_.BN2Str(poolData.tokenAmt), _.BN2Str(T.minus(t)))
     // assert.equal(_.BN2Str(poolData.vaderStaked), _.BN2Str(B.minus(b)))
     // assert.equal(_.BN2Str(poolData.tokenStaked), _.BN2Str(T.minus(t)))
-    assert.equal(_.BN2Str(await vader.balanceOf(pools.address)), _.BN2Str(B.minus(b)), 'vader balance')
+    assert.equal(_.BN2Str(await vether.balanceOf(pools.address)), _.BN2Str(B.minus(b)), 'vether balance')
     assert.equal(_.BN2Str(await token.balanceOf(pools.address)), _.BN2Str(T.minus(t)), 'token balance')
 
     let stakerUnits2 = _.getBN(await pools.balanceOf(acc))

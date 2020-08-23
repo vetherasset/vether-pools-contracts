@@ -33,9 +33,17 @@ Vether Nuances
 2) Modify Router to set DAO address in deploy (and VPool to also set)
 3) Modify DAO to not ask Vether for DAO address
 
+Deploy Vether
+Deploy Utils(vether.address)
+Deploy vDao(vether.address, util.address)
+Deploy vRouter(vether.address, vDao.address, util.address)
+Set Genesis DAO utils.setGenesisDao(vDao.address)
+Set Genesis Router vDao.setGenesisRouter(vRouter.address)
+
 ## Addresses
 
 ### Kovan
+0xdA9e97139937BaD5e6d1d1aBB4C9Ab937a432B7C vether
 
 
 

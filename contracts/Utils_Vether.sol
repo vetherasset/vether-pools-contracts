@@ -90,7 +90,7 @@ contract Utils_Vether {
 
     using SafeMath for uint;
 
-    address public VADER;
+    address public VETHER;
     iVDAO public VDAO;
 
     struct TokenDetails {
@@ -141,7 +141,7 @@ contract Utils_Vether {
     }
 
     constructor (address _vader) public payable {
-        VADER = _vader;
+        VETHER = _vader;
     }
     function setGenesisDao(address _vDao) public {
         VDAO = iVDAO(_vDao);
@@ -149,8 +149,8 @@ contract Utils_Vether {
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
-            tokenDetails.name = 'Binance Chain Token';
-            tokenDetails.symbol = 'BNB';
+            tokenDetails.name = 'Ethereum';
+            tokenDetails.symbol = 'ETH';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * 10**18;
             tokenDetails.balance = msg.sender.balance;
@@ -177,7 +177,7 @@ contract Utils_Vether {
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         globalDetails.totalStaked = iVROUTER(VDAO.ROUTER()).totalStaked();
         globalDetails.totalVolume = iVROUTER(VDAO.ROUTER()).totalVolume();
         globalDetails.totalFees = iVROUTER(VDAO.ROUTER()).totalFees();
@@ -188,19 +188,19 @@ contract Utils_Vether {
     }
 
     function getPool(address token) public view returns(address payable pool){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         return iVROUTER(VDAO.ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         return iVROUTER(VDAO.ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         return tokensInRange(0, iVROUTER(VDAO.ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
@@ -214,7 +214,7 @@ contract Utils_Vether {
         return poolsInRange(0, tokenCount());
     }
     function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
-        // iVDAO vdao = iVDAO(iVADER(VADER).DAO());
+        // iVDAO vdao = iVDAO(iVADER(VETHER).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }

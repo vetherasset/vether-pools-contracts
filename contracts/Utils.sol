@@ -145,8 +145,8 @@ contract Utils {
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
-            tokenDetails.name = 'Binance Chain Token';
-            tokenDetails.symbol = 'BNB';
+            tokenDetails.name = 'Ethereum';
+            tokenDetails.symbol = 'ETH';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * 10**18;
             tokenDetails.balance = msg.sender.balance;

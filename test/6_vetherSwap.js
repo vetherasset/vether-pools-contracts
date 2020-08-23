@@ -12,11 +12,11 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var VADER = artifacts.require("./VaderMinted.sol");
+var VADER = artifacts.require("./Vether.sol");
 var VDAO = artifacts.require("./VDao.sol");
-var VROUTER = artifacts.require("./VRouter.sol");
-var VPOOL = artifacts.require("./VPool.sol");
-var UTILS = artifacts.require("./Utils.sol");
+var VROUTER = artifacts.require("./VRouter_Vether.sol");
+var VPOOL = artifacts.require("./VPool_Vether.sol");
+var UTILS = artifacts.require("./Utils_Vether.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
 var vader; var token1;  var token2; var addr1; var addr2;
@@ -80,10 +80,9 @@ before(async function() {
     vader = await VADER.new()
     utils = await UTILS.new(vader.address)
     vDao = await VDAO.new(vader.address, utils.address)
-    vRouter = await VROUTER.new(vader.address, utils.address)
-    await vader.changeDAO(vDao.address)
+    vRouter = await VROUTER.new(vader.address, vDao.address, utils.address)
+    await utils.setGenesisDao(vDao.address)
     await vDao.setGenesisRouter(vRouter.address)
-    assert.equal(await vDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
     console.log(await utils.VADER())
     console.log(await vDao.ROUTER())
 

@@ -6,11 +6,11 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var VADER = artifacts.require("./VaderMinted.sol");
-var VDAO = artifacts.require("./VDao.sol");
-var VROUTER = artifacts.require("./VRouter.sol");
-var VPOOL = artifacts.require("./VPool.sol");
-var UTILS = artifacts.require("./Utils.sol");
+var VADER = artifacts.require("./Vether.sol");
+var VDAO = artifacts.require("./VDao_Vether.sol");
+var VROUTER = artifacts.require("./VRouter_Vether.sol");
+var VPOOL = artifacts.require("./VPool_Vether.sol");
+var UTILS = artifacts.require("./Utils_Vether.sol");
 var TOKEN1 = artifacts.require("./Token1.sol");
 
 var vader; var token1;  var token2; var addr1; var addr2;
@@ -50,8 +50,8 @@ function constructor(accounts) {
         vader = await VADER.new()
         utils = await UTILS.new(vader.address)
         vDao = await VDAO.new(vader.address, utils.address)
-        vRouter = await VROUTER.new(vader.address, utils.address)
-        await vader.changeDAO(vDao.address)
+        vRouter = await VROUTER.new(vader.address, vDao.address, utils.address)
+        await utils.setGenesisDao(vDao.address)
         await vDao.setGenesisRouter(vRouter.address)
         await vDao.purgeDeployer()
         assert.equal(await vDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
@@ -175,7 +175,7 @@ async function lockTKN(acc) {
 
 async function voteRouter() {
     it("It should vote", async () => {
-        vRouter2 = await VROUTER.new(vader.address, utils.address)
+        vRouter2 = await VROUTER.new(vader.address, vDao.address, utils.address)
         await vRouter2.migrateRouterData(vRouter.address);
         await vRouter2.migrateTokenData(vRouter.address);
         console.log(`vRouter2: ${vRouter2.address}`)
@@ -228,7 +228,7 @@ async function swapPassR1(acc, b) {
 
     it(`It should buy ETH with BASE from ${acc}`, async () => {
         console.log(`vader: ${await utils.VADER()}`)
-        console.log(`DAO: ${await vader.DAO()}`)
+        // console.log(`DAO: ${await vader.DAO()}`)
         console.log(`ROUTER: ${await vDao.ROUTER()}`)
         await _passSwap(acc, b, vRouter)
         await help.logPool(utils, _.ETH, 'ETH')
@@ -240,7 +240,7 @@ async function swapPassR2(acc, b) {
 
     it(`It should buy ETH with BASE from ${acc}`, async () => {
         console.log(`vader: ${await utils.VADER()}`)
-        console.log(`DAO: ${await vader.DAO()}`)
+        // console.log(`DAO: ${await vader.DAO()}`)
         console.log(`ROUTER: ${await vDao.ROUTER()}`)
         await _passSwap(acc, b, vRouter2)
         await help.logPool(utils, _.ETH, 'ETH')

@@ -63,6 +63,7 @@ async function checkLiquidateCDP(instance, _collateral, _debt) {
   return canLiquidate;
 }
 async function logPool(instance, addressToken, ticker) {
+  console.log(instance.address)
   const poolData = await instance.getPoolData(addressToken)
   const token = _.BN2Token(poolData.tokenAmt);
   const vader = _.BN2Token(poolData.baseAmt);

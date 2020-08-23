@@ -14,8 +14,25 @@ Staking
 Swapping
 * Swap from any asset to any asset
 
+### Constructor
+
+Vader Run plan:
+
+Deploy Vader
+Deploy Utils(vader.address)
+Deploy vDao(vader.address, util.address)
+Deploy vRouter(vader.address, util.address)
+Set Genesis DAO vader.changeDAO(vDao.address)
+Set Genesis Router vDao.setGenesisRouter(vRouter.address)
+
+Vether Nuances
+
+* Does not have DAO address, cannot change DAO.
+
+1) modify Utils to not ask Vether for DAO address
 
 
+```
 1000000000000000000 // 10**18
 1000000000000000000000000 //1m
 0x0000000000000000000000000000000000000000
@@ -24,7 +41,7 @@ Swapping
 
 0x476B05e742Bd0Eed4C7cba11A8dDA72BE592B549 // math
 0xCFE254e64Bb766bDb0998801F7b9F2E6762a92DB // vetherPools-2
-
+```
 
 ### ERC-20
 
@@ -76,8 +93,6 @@ function  calcSwapOutput(uint x, uint X, uint Y) public pure returns (uint outpu
     }
 ```
 
-### Constructor
-**WIP**
 
 
 ## Testing - Buidler
@@ -98,56 +113,3 @@ Or execute individually:
 ```
 npx builder test/1_coin.js
 ```
-
-## Testing - Truffle
- Truffle testing can also be done:
-
-```
-truffle compile && truffle migrate --reset
-```
-
-Execute all at once:
-```
-truffle test
-```
-
-Or execute individually:
-```
-truffle test test/1_coin.js
-```
-
-## Analysis
-
-Find in [/analysis](https://github.com/vetherasset/vether-pools-contracts/blob/master/analysis)
-```
-yarn analysis
-```
-
-### [Vether Function Graph](https://github.com/vetherasset/vether-contracts/blob/master/analysis/Vether-Graph.png)
-```
-surya graph contracts/VetherPools.sol | dot -Tpng > analysis/Vether-Graph.png
-```
-
-### [Dependency Graph](https://github.com/vetherasset/vether-contracts/blob/master/analysis/Vether-Inheritance.png)
-```
-surya inheritance contracts/VetherPools.sol | dot -Tpng > analysis/Vether-Inheritance.png
-```
-
-### [Description Report](https://github.com/vetherasset/vether-contracts/blob/master/analysis/Vether-Report.md)
-```
-surya mdreport analysis/Vether-Report.md contracts/VetherPools.sol
-```
-
-### [Describe - Raw](https://github.com/vetherasset/vether-contracts/blob/master/analysis/Vether-Describe.md)
-```
-surya describe contracts/VetherPools.sol
-```
-
-Parse
-```
-surya parse contracts/VetherPools.sol
-```
-
-
-
-

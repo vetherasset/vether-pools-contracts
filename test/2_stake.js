@@ -13,7 +13,7 @@ const math = require('./math.js');
 const help = require('./helper.js');
 const { SupportedAlgorithm } = require("ethers/lib/utils");
 
-var VADER = artifacts.require("./Vether.sol");
+var VADER = artifacts.require("./VaderMinted.sol");
 var VDAO = artifacts.require("./VDao.sol");
 var VROUTER = artifacts.require("./VRouter.sol");
 var VPOOL = artifacts.require("./VPool.sol");
@@ -82,7 +82,7 @@ function constructor(accounts) {
         vDao = await VDAO.new(vader.address, utils.address)
         vRouter = await VROUTER.new(vader.address, utils.address)
         await vader.changeDAO(vDao.address)
-        await vDao.setGenesivRouter(vRouter.address)
+        await vDao.setGenesisRouter(vRouter.address)
         assert.equal(await vDao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
         console.log(await utils.VADER())
         console.log(await vDao.ROUTER())

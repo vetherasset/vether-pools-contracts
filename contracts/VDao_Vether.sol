@@ -60,7 +60,7 @@ library SafeMath {
 }
 
 
-contract VDao {
+contract VDao_Vether {
 
     using SafeMath for uint;
     uint256 private constant _NOT_ENTERED = 1;
@@ -230,8 +230,8 @@ contract VDao {
         checkDaoChange(proposedDao);
         if(proposedDaoChange){
             if((now - daoChangeStart) > coolOffPeriod){
-                iVADER(VADER).changeIncentiveAddress(proposedDao);
-                iVADER(VADER).changeDAO(proposedDao);
+                // iVADER(VADER).changeIncentiveAddress(proposedDao);
+                // iVADER(VADER).changeDAO(proposedDao);
                 uint reserve = iERC20(VADER).balanceOf(address(this));
                 iERC20(VADER).transfer(proposedDao, reserve);
                 daoHasMoved = true;
@@ -271,7 +271,7 @@ contract VDao {
 
     function ROUTER() public view returns(address){
         if(daoHasMoved){
-            return VDao(VDAO).ROUTER();
+            return VDao_Vether(VDAO).ROUTER();
         } else {
             return _router;
         }

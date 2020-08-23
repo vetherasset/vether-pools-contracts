@@ -12,7 +12,7 @@ const _ = require('./utils.js');
 const math = require('./math.js');
 const help = require('./helper.js');
 
-var VADER = artifacts.require("./Vether.sol");
+var VADER = artifacts.require("./VaderMinted.sol");
 var UTILS = artifacts.require("./Utils.sol");
 
 var vader; var utils;

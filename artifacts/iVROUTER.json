@@ -9,7 +9,7 @@
           "type": "address"
         }
       ],
-      "name": "ivPool",
+      "name": "isPool",
       "outputs": [
         {
           "internalType": "bool",

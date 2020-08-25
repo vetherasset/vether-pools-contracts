@@ -1,11 +1,11 @@
 {
-  "contractName": "VPool",
+  "contractName": "Pool",
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "_vader",
+          "name": "_base",
           "type": "address"
         },
         {
@@ -100,7 +100,7 @@
     },
     {
       "inputs": [],
-      "name": "VADER",
+      "name": "BASE",
       "outputs": [
         {
           "internalType": "address",

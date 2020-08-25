@@ -1,11 +1,11 @@
 {
-  "contractName": "VDao",
+  "contractName": "Dao",
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "_vader",
+          "name": "_base",
           "type": "address"
         },
         {
@@ -238,7 +238,7 @@
     },
     {
       "inputs": [],
-      "name": "VADER",
+      "name": "BASE",
       "outputs": [
         {
           "internalType": "address",
@@ -251,7 +251,7 @@
     },
     {
       "inputs": [],
-      "name": "VDAO",
+      "name": "DAO",
       "outputs": [
         {
           "internalType": "address",

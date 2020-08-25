@@ -1,16 +1,16 @@
 {
-  "contractName": "VPool_Vether",
+  "contractName": "Pool_Vether",
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "_vader",
+          "name": "_base",
           "type": "address"
         },
         {
-          "internalType": "contract iVDAO",
-          "name": "_vDao",
+          "internalType": "contract iDAO",
+          "name": "_Dao",
           "type": "address"
         },
         {
@@ -105,10 +105,10 @@
     },
     {
       "inputs": [],
-      "name": "VDAO",
+      "name": "DAO",
       "outputs": [
         {
-          "internalType": "contract iVDAO",
+          "internalType": "contract iDAO",
           "name": "",
           "type": "address"
         }

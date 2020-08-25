@@ -1,15 +1,22 @@
 {
-  "contractName": "iROUTER",
+  "contractName": "iBASE",
   "abi": [
     {
-      "inputs": [
+      "inputs": [],
+      "name": "DAO",
+      "outputs": [
         {
           "internalType": "address",
           "name": "",
           "type": "address"
         }
       ],
-      "name": "isPool",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "mapAddressHasClaimed",
       "outputs": [
         {
           "internalType": "bool",

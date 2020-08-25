@@ -1,16 +1,16 @@
 {
-  "contractName": "VRouter_Vether",
+  "contractName": "Router_Vether",
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
-          "name": "_vader",
+          "name": "_base",
           "type": "address"
         },
         {
           "internalType": "address",
-          "name": "_vDao",
+          "name": "_Dao",
           "type": "address"
         },
         {
@@ -186,10 +186,10 @@
     },
     {
       "inputs": [],
-      "name": "VDAO",
+      "name": "DAO",
       "outputs": [
         {
-          "internalType": "contract iVDAO",
+          "internalType": "contract iDAO",
           "name": "",
           "type": "address"
         }
@@ -798,7 +798,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "_vDao",
+          "name": "_Dao",
           "type": "address"
         }
       ],

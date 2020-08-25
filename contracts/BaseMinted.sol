@@ -46,8 +46,8 @@ library SafeMath {
         return c;
     }
 }
-    //======================================VADER=========================================//
-contract Vader is iERC20 {
+    //======================================BASE=========================================//
+contract BaseMinted is iERC20 {
     using SafeMath for uint256;
 
     // ERC-20 Parameters
@@ -90,13 +90,13 @@ contract Vader is iERC20 {
 
     //=====================================CREATION=========================================//
     // Constructor
-    constructor(address _vether) public {
-        name = 'VADER PROTOCOL TOKEN';
-        symbol = 'VADER';
+    constructor() public {
+        name = 'BASE PROTOCOL TOKEN';
+        symbol = 'BASE';
         decimals = 18;
         one = 10 ** decimals;
         baseline = 1 * 10**6 * one;
-        totalSupply = 0;
+        totalSupply = baseline;
         totalCap = 3 * 10**6 * one;
         emissionCurve = 2048;
         emitting = false;
@@ -104,8 +104,10 @@ contract Vader is iERC20 {
         secondsPerEra = 1; //86400;
         nextEraTime = now + secondsPerEra;
         DAO = msg.sender;
-        VETHER = _vether;
+        // VETHER = _vether;
         burnAddress = 0x0111011001100001011011000111010101100101;
+        _balances[msg.sender] = totalSupply;
+        emit Transfer(address(0), msg.sender, totalSupply);
     }
 
     //========================================iERC20=========================================//

@@ -38,13 +38,13 @@ async function calcEtherPriceInUSD(instance, amount) {
   const ethPriceInUSD = (maiPriceInUSD.times(etherPriceInVeth)).div(_.oneBN)
   return ((_amount.times(ethPriceInUSD)).div(_.oneBN)).toFixed()
 }
-async function calcEtherPPinVADER(instance, amount) {
+async function calcEtherPPinBASE(instance, amount) {
   var tokenBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).tokenAmt);
   var maiBal = new BigNumber((await instance.mapToken_ExchangeData(_.addressETH)).baseAmt);
   const outputVeth = math.calcCLPSwap(amount, tokenBal, maiBal);
   return outputVeth;
 }
-async function calcVADERPPInUSD(amount) {
+async function calcBASEPPInUSD(amount) {
   var usdBal = new BigNumber(usdPool.tokenAmt)
   var maiBal = new BigNumber(usdPool.mai)
   const outputUSD = math.calcCLPSwap(amount.toString(), maiBal, usdBal);
@@ -66,17 +66,17 @@ async function logPool(instance, addressToken, ticker) {
   console.log(instance.address)
   const poolData = await instance.getPoolData(addressToken)
   const token = _.BN2Token(poolData.tokenAmt);
-  const vader = _.BN2Token(poolData.baseAmt);
+  const base = _.BN2Token(poolData.baseAmt);
   const tokenAmtStaked = _.BN2Token(poolData.tokenAmtStaked);
   const baseAmtStaked = _.BN2Token(poolData.baseAmtStaked);
   const fees = _.BN2Token(poolData.fees);
   const volume = _.BN2Token(poolData.volume);
   const txCount = _.getBN(poolData.txCount);
   const poolUnits = _.BN2Token(poolData.poolUnits);
-  console.log("\n-------------------Token-Vader Details -------------------")
+  console.log("\n-------------------Token-Base Details -------------------")
   console.log(`ADDRESS: ${addressToken}`)
-  console.log(`MAPPINGS: [ ${token} ${ticker} | ${vader} VADER ]`)
-  console.log(`STAKES: [ ${tokenAmtStaked}  ${ticker} | ${baseAmtStaked} VADER ]`)
+  console.log(`MAPPINGS: [ ${token} ${ticker} | ${base} BASE ]`)
+  console.log(`STAKES: [ ${tokenAmtStaked}  ${ticker} | ${baseAmtStaked} BASE ]`)
   console.log(`UNITS: [ ${poolUnits} units ]`)
   console.log(`AVE: [ ${fees} fees, ${volume} volume, ${txCount} txCount ]`)
   console.log("-----------------------------------------------------------\n")
@@ -85,7 +85,7 @@ async function logStaker(instance, acc, token) {
   let stakeData = (await instance.getMemberData(token, acc))
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
-  console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} VADER | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
+  console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
   console.log(`StakeData: [ ${_.BN2Token(stakeData.stakerUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
@@ -99,21 +99,21 @@ async function logETHBalances(acc0, acc1, ETH) {
   console.log('acc1:       ', acc1TokenBal / (_.one))
   console.log('_.addressETH: ', _.addressETHBalance / (_.one))
 }
-async function logVADERBalances(instance, acc0, acc1, VADERAddress) {
-  // instance = await VADER.deployed();
-  const acc0VADERBalance = _.BN2Int(await instance.balanceOf(acc0))
-  const acc1VADERBalance = _.BN2Int(await instance.balanceOf(acc1))
-  const addressVADERBalance = _.BN2Int(await instance.balanceOf(VADERAddress))
+async function logBASEBalances(instance, acc0, acc1, BASEAddress) {
+  // instance = await BASE.deployed();
+  const acc0BASEBalance = _.BN2Int(await instance.balanceOf(acc0))
+  const acc1BASEBalance = _.BN2Int(await instance.balanceOf(acc1))
+  const addressBASEBalance = _.BN2Int(await instance.balanceOf(BASEAddress))
   console.log(" ")
-  console.log("-----------------------VADER BALANCES--------------------")
-  console.log('acc0:       ', acc0VADERBalance / (_.one))
-  console.log('acc1:       ', acc1VADERBalance / (_.one))
-  console.log('addressVADER: ', addressVADERBalance / (_.one))
+  console.log("-----------------------BASE BALANCES--------------------")
+  console.log('acc0:       ', acc0BASEBalance / (_.one))
+  console.log('acc1:       ', acc1BASEBalance / (_.one))
+  console.log('addressBASE: ', addressBASEBalance / (_.one))
 
 }
 
 async function logCDP(instance, CDPAddress) {
-  // instance = await VADER.deployed();
+  // instance = await BASE.deployed();
   const CDP = new BigNumber(await instance.mapAddress_MemberData.call(CDPAddress)).toFixed();
   const Collateral = new BigNumber((await instance.mapCDP_Data.call(CDP)).collateral).toFixed();
   const Debt = new BigNumber((await instance.mapCDP_Data.call(CDP)).debt).toFixed();
@@ -128,7 +128,7 @@ async function logCDP(instance, CDPAddress) {
 module.exports = {
   logCDP: logCDP
   ,
-  logVADERBalances: logVADERBalances
+  logBASEBalances: logBASEBalances
   ,
   logETHBalances: logETHBalances
   ,
@@ -138,9 +138,9 @@ module.exports = {
   ,
   checkLiquidateCDP: checkLiquidateCDP
   ,
-  calcVADERPPInUSD: calcVADERPPInUSD
+  calcBASEPPInUSD: calcBASEPPInUSD
   ,
-  calcEtherPPinVADER: calcEtherPPinVADER
+  calcEtherPPinBASE: calcEtherPPinBASE
   ,
   calcEtherPriceInUSD: calcEtherPriceInUSD
   ,

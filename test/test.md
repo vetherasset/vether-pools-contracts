@@ -1,15 +1,15 @@
 Test Routine.
 
 1. Deploy Veth, 2 token. 
-2. Deploy Vader Pools, with VADER set.
+2. Deploy Base Pools, with BASE set.
 3. Add ETh, 2 token pools
 4. Swap 
-- ETH->VADER, 
+- ETH->BASE, 
 - ETH->T1, 
-- VADER->ETH, 
+- BASE->ETH, 
 - T1->ETH
-- T1 -> VADER
-- VADER -> T1
+- T1 -> BASE
+- BASE -> T1
 - T1 -> T2
 
 5. Stake:

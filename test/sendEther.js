@@ -1,9 +1,9 @@
-var Vader = artifacts.require("./Token1.sol")
+var Base = artifacts.require("./Token1.sol")
 
 var acc0; var acc1; var acc7;
 var send1 = 2*(10**18)
 
-contract("Vader", function(accounts) {
+contract("Base", function(accounts) {
   constructor(accounts)
   sendEther(acc7, acc0)
 })
@@ -11,7 +11,7 @@ contract("Vader", function(accounts) {
 function constructor(accounts) {
   acc0 = accounts[0]; acc1 = accounts[1]; acc7 = accounts[7];
   it("constructor events", async () => {
-    let Vader = artifacts.require("Vader.sol");
+    let Base = artifacts.require("Base.sol");
   });
 }
 

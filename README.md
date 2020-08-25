@@ -16,36 +16,36 @@ Swapping
 
 ### Constructor
 
-Vader Run plan:
+Base Run plan:
 
-Deploy Vader
-Deploy Utils(vader.address)
-Deploy vDao(vader.address, util.address)
-Deploy vRouter(vader.address, util.address)
-Set Genesis DAO vader.changeDAO(vDao.address)
-Set Genesis Router vDao.setGenesisRouter(vRouter.address)
+Deploy Base
+Deploy Utils(base.address)
+Deploy Dao(base.address, util.address)
+Deploy router(base.address, util.address)
+Set Genesis DAO base.changeDAO(Dao.address)
+Set Genesis Router Dao.setGenesisRouter(router.address)
 
 Vether Nuances
 
 * Does not have DAO address, cannot change DAO.
 
 1) Modify Utils to not ask Vether for DAO address, set DAO address in deploy
-2) Modify Router to set DAO address in deploy (and VPool to also set)
+2) Modify Router to set DAO address in deploy (and Pool to also set)
 3) Modify DAO to not ask Vether for DAO address
 
 Deploy Vether
 Deploy Utils(vether.address)
-Deploy vDao(vether.address, util.address)
-Deploy vRouter(vether.address, vDao.address, util.address)
-Set Genesis DAO utils.setGenesisDao(vDao.address)
-Set Genesis Router vDao.setGenesisRouter(vRouter.address)
+Deploy Dao(vether.address, util.address)
+Deploy router(vether.address, Dao.address, util.address)
+Set Genesis DAO utils.setGenesisDao(Dao.address)
+Set Genesis Router Dao.setGenesisRouter(router.address)
 
 ### Upgrade DAO && Router
-Deploy new vDao(vether.address, util.address)
-Set Genesis DAO utils.setGenesisDao(vDao.address)
-Deploy new vRouter(vether.address, vDao.address, util.address)
+Deploy new Dao(vether.address, util.address)
+Set Genesis DAO utils.setGenesisDao(Dao.address)
+Deploy new router(vether.address, Dao.address, util.address)
 Migrate Data to new Router
-Set Genesis Router vDao.setGenesisRouter(vRouter.address)
+Set Genesis Router Dao.setGenesisRouter(router.address)
 Vote for new DAO:
 * 
 
@@ -63,26 +63,26 @@ Vote for new DAO:
 
 #### Version1
 0xc93c4a2D15815843fB4cC7b3bD0bec5135c31245 utils
-0x5D63b1e364473cDe7bf5Ff13673F0CE8BeaA8de3 vDao
-0x252704c3bb1eB9EE3505Bee6985e2935e406fd7d vRouter
-0x30925908521cE64FEa1C0371BC7C8535091fF9e1 vRouter2
+0x5D63b1e364473cDe7bf5Ff13673F0CE8BeaA8de3 Dao
+0x252704c3bb1eB9EE3505Bee6985e2935e406fd7d router
+0x30925908521cE64FEa1C0371BC7C8535091fF9e1 router2
 
 #### Version2
 0xA490d3ba44b0058FfE3AB6Ff3e262D281c1D8abB utils
-0xcB841b295fe7B151AeD65359D2B7BD120f2E1371 vDao
-0xBc6f2527B99D26263122cb08Df275954f799347C vRouter
-0x9298319b33204655d7c0badd989b857ebb95b5c4 vRouter2
+0xcB841b295fe7B151AeD65359D2B7BD120f2E1371 Dao
+0xBc6f2527B99D26263122cb08Df275954f799347C router
+0x9298319b33204655d7c0badd989b857ebb95b5c4 router2
 
 0xf4C5e6046fC4394C26D9C6fE37dF0fF5969F6BF1 vpt-usdt
 0xE563Ecdc4c62389A4790106C2C43F1Df2568F9d9 vpt-eth
 
 #### Version3 
 0xA490d3ba44b0058FfE3AB6Ff3e262D281c1D8abB utils
-0xce25e8C1262f29D72D687F67AeD9A8620d8758FA vDao
-0xc490DAdA24D628c5A6a476f00dFef3528D7df434 vRouter
+0xce25e8C1262f29D72D687F67AeD9A8620d8758FA Dao
+0xc490DAdA24D628c5A6a476f00dFef3528D7df434 router
 
-0xEc6e21fdF4D9F660fa4e91ae164d25413B577325 vDao2
-0xAc3277BCe7b1f74abC42ce3E8302b62931864bC1 vRouter2
+0xEc6e21fdF4D9F660fa4e91ae164d25413B577325 Dao2
+0xAc3277BCe7b1f74abC42ce3E8302b62931864bC1 router2
 
 0x25c778E8b62C15Df6586e66f0AC69775199fa5d9 vpt-usdt
 0x63933653d869099d5d282f76d6b23692c7d2c32c vpt-eth

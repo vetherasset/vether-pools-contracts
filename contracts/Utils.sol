@@ -91,6 +91,7 @@ contract Utils {
     using SafeMath for uint;
 
     address public BASE;
+    address public DEPLOYER;
 
     struct TokenDetails {
         string name;
@@ -133,15 +134,27 @@ contract Utils {
         uint txCount;
         uint poolUnits;
     }
-    struct MemberDataStruct {
-        uint baseAmtStaked;
-        uint tokenAmtStaked;
-        uint stakerUnits;
+
+    // Only Deployer can execute
+    modifier onlyDeployer() {
+        require(msg.sender == DEPLOYER, "DeployerErr");
+        _;
     }
 
     constructor (address _base) public payable {
         BASE = _base;
+        DEPLOYER = msg.sender;
     }
+
+    // function setGenesisDao(address _Dao) public onlyDeployer {
+    //     DAO = iDAO(_Dao);
+    // }
+    // function updateDAO(address _Dao) public {
+    //     require(msg.sender == address(DAO), "Must be DAO");
+    //     DAO = iDAO(_Dao);
+    // }
+
+    //====================================DATA-HELPERS====================================//
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
@@ -250,6 +263,17 @@ contract Utils {
         return (baseAmt, tokenAmt);
     }
 
+    function getShareOfBaseAmount(address token, address member) public view returns(uint baseAmt){
+        address payable pool = getPool(token);
+        uint units = iERC20(pool).balanceOf(member);
+        return calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).baseAmt());
+    }
+    function getShareOfTokenAmount(address token, address member) public view returns(uint baseAmt){
+        address payable pool = getPool(token);
+        uint units = iERC20(pool).balanceOf(member);
+        return calcShare(units, iERC20(pool).totalSupply(), iPOOL(pool).tokenAmt());
+    }
+
     function getPoolShareAssym(address token, uint units, bool toBase) public view returns(uint baseAmt, uint tokenAmt, uint outputAmt){
         address payable pool = getPool(token);
         if(toBase){
@@ -262,14 +286,6 @@ contract Utils {
             outputAmt = tokenAmt;
         }
         return (baseAmt, tokenAmt, outputAmt);
-    }
-
-    function getMemberData(address token, address member) public view returns(MemberDataStruct memory memberData){
-        address payable pool = getPool(token);
-        memberData.baseAmtStaked = iPOOL(pool).getBaseAmtStaked(member);
-        memberData.tokenAmtStaked = iPOOL(pool).getTokenAmtStaked(member);
-        memberData.stakerUnits = iERC20(pool).balanceOf(member);
-        return memberData;
     }
 
     function getPoolAge(address token) public view returns (uint daysSinceGenesis){
@@ -299,27 +315,6 @@ contract Utils {
         return (avgROI.mul(365)).div(poolAge);
    }
 
-    function getMemberROI(address token, address member) public view returns (uint roi){
-        MemberDataStruct memory memberData = getMemberData(token, member);
-        uint _baseStart = memberData.baseAmtStaked.mul(2);
-        if(isMember(token, member)){
-            (uint _baseShare, uint _tokenShare) = getMemberShare(token, member);
-            uint _baseEnd = _baseShare.mul(2);
-            uint _ROIS = 0; uint _ROIA = 0;
-            if(_baseStart > 0){
-                _ROIS = (_baseEnd.mul(10000)).div(_baseStart);
-            }
-            uint _tokenStart = memberData.tokenAmtStaked.mul(2);
-            uint _tokenEnd = _tokenShare.mul(2);
-            if(_tokenStart > 0){
-                _ROIA = (_tokenEnd.mul(10000)).div(_tokenStart);
-            }
-            return (_ROIS + _ROIA).div(2);
-        } else {
-            return 0;
-        }
-    }
-
     function isMember(address token, address member) public view returns(bool){
         address payable pool = getPool(token);
         if (iERC20(pool).balanceOf(member) > 0){
@@ -328,6 +323,8 @@ contract Utils {
             return false;
         }
     }
+
+    //====================================PRICING====================================//
 
     function calcValueInBase(address token, uint amount) public view returns (uint value){
        address payable pool = getPool(token);
@@ -349,9 +346,7 @@ contract Utils {
         return  iPOOL(pool).calcBasePPinToken(amount);
     }
 
-
-
-
+    //====================================CORE-MATH====================================//
 
     function calcPart(uint bp, uint total) public pure returns (uint part){
         // 10,000 basis points = 100.00%

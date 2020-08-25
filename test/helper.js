@@ -82,10 +82,10 @@ async function logPool(instance, addressToken, ticker) {
   console.log("-----------------------------------------------------------\n")
 }
 async function logStaker(instance, acc, token) {
-  let stakeData = (await instance.getMemberData(token, acc))
+  let stakerUnits = (await instance.balanceOf(acc))
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
-  console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
+  // console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
   console.log(`StakeData: [ ${_.BN2Token(stakeData.stakerUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }

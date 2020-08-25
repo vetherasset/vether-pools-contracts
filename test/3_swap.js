@@ -185,9 +185,9 @@ async function stake(acc, b, t) {
         assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(S.plus(b)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(pool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
-        let memberData = (await utils.getMemberData(token, acc))
-        assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
-        assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
+        // let memberData = (await utils.getMemberData(token, acc))
+        // assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
+        // assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
         const baseBal = _.BN2Token(await base.balanceOf(pool.address));
@@ -229,9 +229,9 @@ async function _stakeTKN(acc, t, b, token, pool) {
     assert.equal(_.BN2Str(await base.balanceOf(pool.address)), _.BN2Str(S.plus(b)), 'base balance')
     assert.equal(_.BN2Str(await token.balanceOf(pool.address)), _.BN2Str(T.plus(t)), 'ether balance')
 
-    let memberData = (await utils.getMemberData(token.address, acc))
-    assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
-    assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
+    // let memberData = (await utils.getMemberData(token.address, acc))
+    // assert.equal(memberData.baseAmtStaked, b, 'baseAmt')
+    // assert.equal(memberData.tokenAmtStaked, t, 'tokenAmt')
 
     const tokenBal = _.BN2Token(await web3.eth.getBalance(pool.address));
     const baseBal = _.BN2Token(await base.balanceOf(pool.address));
@@ -426,10 +426,10 @@ async function unstakeETH(bp, acc) {
         console.log('poolAge-ETH', _.BN2Str(poolAge))
         let poolAPY = await utils.getPoolAPY(_.ETH)
         console.log('poolAPY-ETH', _.BN2Str(poolAPY))
-        let memberROI0 = await utils.getMemberROI(_.ETH, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(_.ETH, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(_.ETH, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(_.ETH, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         let poolData = await utils.getPoolData(_.ETH);
         var B = _.getBN(poolData.baseAmt)
@@ -477,10 +477,10 @@ async function unstakeTKN1(bp, acc) {
         console.log('poolAge-TKN1', _.BN2Str(poolAge))
         let poolAPY = await utils.getPoolAPY(token1.address)
         console.log('poolAPY-TKN1', _.BN2Str(poolAPY))
-        let memberROI0 = await utils.getMemberROI(token1.address, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(token1.address, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(token1.address, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(token1.address, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         await _unstakeTKN(bp, acc, poolTKN1, token1)
         await help.logPool(utils, token1.address, 'TKN1')
@@ -498,10 +498,10 @@ async function unstakeTKN2(bp, acc) {
         let poolAPY = await utils.getPoolAPY(token2.address)
         console.log('poolAPY-TKN2', _.BN2Str(poolAPY))
 
-        let memberROI0 = await utils.getMemberROI(token2.address, acc0)
-        console.log('memberROI0', _.BN2Str(memberROI0))
-        let memberROI1 = await utils.getMemberROI(token2.address, acc1)
-        console.log('memberROI1', _.BN2Str(memberROI1))
+        // let memberROI0 = await utils.getMemberROI(token2.address, acc0)
+        // console.log('memberROI0', _.BN2Str(memberROI0))
+        // let memberROI1 = await utils.getMemberROI(token2.address, acc1)
+        // console.log('memberROI1', _.BN2Str(memberROI1))
 
         await _unstakeTKN(bp, acc, poolTKN2, token2)
         await help.logPool(utils, token2.address, 'TKN2')

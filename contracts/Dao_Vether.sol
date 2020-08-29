@@ -15,9 +15,8 @@ interface iPOOL {
     function transferTo(address, uint) external returns (bool);
 }
 interface iUTILS {
-    function calcShare(uint, uint, uint) external pure returns (uint);
-    function getPoolShare(address, uint) external view returns(uint);
-    function updateDAO(address) external;
+    function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
+    function getPoolShare(address token, uint units) external view returns(uint baseAmt);
 }
 interface iBASE {
     function changeIncentiveAddress(address) external returns(bool);
@@ -70,8 +69,7 @@ contract Dao_Vether {
     uint256 private _status;
     address public DEPLOYER;
 
-    iUTILS public UTILS;
-    address public VETHER;
+    address public BASE;
 
     uint256 public totalWeight;
     uint public one = 10**18;
@@ -79,22 +77,28 @@ contract Dao_Vether {
     uint public blocksPerDay = 5760;
     uint public daysToEarnFactor = 10;
 
-    address public proposedRouter;
-    bool public proposedRouterChange;
-    uint public routerChangeStart;
-    bool public routerHasMoved;
-    address private _router;
-
     address public proposedDao;
     bool public proposedDaoChange;
     uint public daoChangeStart;
     bool public daoHasMoved;
     address public DAO;
 
+    address public proposedRouter;
+    bool public proposedRouterChange;
+    uint public routerChangeStart;
+    bool public routerHasMoved;
+    iROUTER private _ROUTER;
+
+    address public proposedUtils;
+    bool public proposedUtilsChange;
+    uint public utilsChangeStart;
+    bool public utilsHasMoved;
+    iUTILS private _UTILS;
+
     address[] public arrayMembers;
-    mapping(address => bool) public wasMember; // Is Member
+    mapping(address => bool) public isMember; // Is Member
     mapping(address => mapping(address => uint256)) public mapMemberPool_Balance; // Member's balance in pool
-    mapping(address => uint256) public mapMember_Weight; // Value of all weight
+    mapping(address => uint256) public mapMember_Weight; // Value of weight
     mapping(address => mapping(address => uint256)) public mapMemberPool_Weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_Block;
 
@@ -120,15 +124,21 @@ contract Dao_Vether {
         _;
     }
 
-    constructor (address _base, address _utils) public payable {
-        VETHER = _base;
-        UTILS = iUTILS(_utils);
+    constructor (address _base) public payable {
+        BASE = _base;
         DEPLOYER = msg.sender;
         _status = _NOT_ENTERED;
     }
-    function setGenesisRouter(address genesisRouter) public onlyDeployer {
-        _router = genesisRouter;
+    function setGenesisAddresses(address _router, address _utils) public onlyDeployer {
+        _ROUTER = iROUTER(_router);
+        _UTILS = iUTILS(_utils);
     }
+    function setGenesisFactors(uint _coolOff, uint _blocksPerDay, uint _daysToEarn) public onlyDeployer {
+        coolOffPeriod = _coolOff;
+        blocksPerDay = _blocksPerDay;
+        daysToEarnFactor = _daysToEarn;
+    }
+
     function purgeDeployer() public onlyDeployer {
         DEPLOYER = address(0);
     }
@@ -136,14 +146,14 @@ contract Dao_Vether {
     //============================== USER - LOCK/UNLOCK ================================//
     // Member locks some LP tokens
     function lock(address pool, uint256 amount) public nonReentrant {
-        require(iROUTER(_router).isPool(pool) == true, "Must be listed");
+        require(_ROUTER.isPool(pool) == true, "Must be listed");
         require(amount > 0, "Must get some");
-        if (!wasMember[msg.sender]) {
+        if (!isMember[msg.sender]) {
             mapMember_Block[msg.sender] = block.number;
             arrayMembers.push(msg.sender);
-            wasMember[msg.sender] = true;
+            isMember[msg.sender] = true;
         }
-        require(iPOOL(pool).transferTo(address(this), amount),"Must transfer"); // LP tokens return bool
+        require(iPOOL(pool).transferTo(address(this), amount),"Must transfer"); // Uni/Bal LP tokens return bool
         mapMemberPool_Balance[msg.sender][pool] = mapMemberPool_Balance[msg.sender][pool].add(amount); // Record total pool balance for member
         registerWeight(msg.sender, pool); // Register weight
         emit MemberLocks(msg.sender, pool, amount);
@@ -152,9 +162,9 @@ contract Dao_Vether {
     // Member unlocks all from a pool
     function unlock(address pool) public nonReentrant {
         uint256 balance = mapMemberPool_Balance[msg.sender][pool];
-        require(balance > 0, "Must have a balance in pool");
+        require(balance > 0, "Must have a balance to weight");
         reduceWeight(pool, msg.sender);
-        if(mapMember_Weight[msg.sender] == 0 && iERC20(VETHER).balanceOf(address(this)) > 0){
+        if(mapMember_Weight[msg.sender] == 0 && iERC20(BASE).balanceOf(address(this)) > 0){
             harvest();
         }
         require(iERC20(pool).transfer(msg.sender, balance), "Must transfer"); // Then transfer
@@ -173,7 +183,7 @@ contract Dao_Vether {
             mapMember_Weight[member] = mapMember_Weight[member].sub(mapMemberPool_Weight[member][pool]);
             mapMemberPool_Weight[member][pool] = 0;
         }
-        uint weight = UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_Balance[msg.sender][pool] );
+        uint weight = _UTILS.getPoolShare(iPOOL(pool).TOKEN(), mapMemberPool_Balance[msg.sender][pool] );
         mapMemberPool_Weight[member][pool] = weight;
         mapMember_Weight[member] += weight;
         totalWeight += weight;
@@ -189,64 +199,54 @@ contract Dao_Vether {
 
     //============================== GOVERNANCE ================================//
 
+
     // Member votes new Router
-    function voteRouterChange(address router) public nonReentrant returns (uint voteWeight) {
-        voteWeight = countVotes(router);
-        updateRouterChange(router);
-        emit NewVote(msg.sender, router, voteWeight, mapAddress_Votes[router], 'ROUTER');
+    function voteAddressChange(address newAddress, string memory typeStr) public nonReentrant returns (uint voteWeight) {
+        bytes memory _type = bytes(typeStr);
+        require(sha256(_type) == sha256('DAO') || sha256(_type) == sha256('ROUTER') || sha256(_type) == sha256('UTILS'));
+        voteWeight = countVotes(newAddress);
+        updateAddressChange(newAddress, _type);
+        emit NewVote(msg.sender, newAddress, voteWeight, mapAddress_Votes[newAddress], string(_type));
     }
 
-    function updateRouterChange(address _newRouter) internal {
-        if(hasQuorum(_newRouter)){
-            proposedRouter = _newRouter;
-            proposedRouterChange = true;
-            routerChangeStart = now;
-            routerHasMoved = false;
-            emit ProposalFinalising(msg.sender, _newRouter, now+coolOffPeriod, 'ROUTER');
-        }
-    }
-
-    function moveRouter() public nonReentrant {
-        require(proposedRouter != address(0), "No router proposed");
-        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
-        checkRouterChange(proposedRouter);
-        if(proposedRouterChange){
-            _router = proposedRouter;
-            routerHasMoved = true;
-            emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
-            mapAddress_Votes[proposedRouter] = 0;
-            proposedRouter = address(0);
-            proposedRouterChange = false;
-        }
-    }
-    function checkRouterChange(address _newRouter) internal {
-        if(!hasQuorum(_newRouter)){
-            proposedRouterChange = false;
+    function updateAddressChange(address _newAddress, bytes memory _type) internal {
+        if(hasQuorum(_newAddress)){
+            if(sha256(_type) == sha256('DAO')){
+                updateDao(_newAddress);
+            } else if (sha256(_type) == sha256('ROUTER')) {
+                updateRouter(_newAddress);
+            } else if (sha256(_type) == sha256('UTILS')){
+                updateUtils(_newAddress);
+            }
+            emit ProposalFinalising(msg.sender, _newAddress, now+coolOffPeriod, string(_type));
         }
     }
 
-    // Member votes new DAO
-    function voteDaoChange(address newDao) public nonReentrant returns (uint voteWeight) {
-        voteWeight = countVotes(newDao);
-        updateDaoChange(newDao);
-        emit NewVote(msg.sender, newDao, voteWeight, mapAddress_Votes[newDao], 'DAO');
-    }
-    function updateDaoChange(address _newDao) internal {
-        if(hasQuorum(_newDao)){
-            proposedDao = _newDao;
-            proposedDaoChange = true;
-            daoChangeStart = now;
-            emit ProposalFinalising(msg.sender, _newDao, now+coolOffPeriod, 'DAO');
+    function moveAddress(string memory _typeStr) public nonReentrant {
+        bytes memory _type = bytes(_typeStr);
+        if(sha256(_type) == sha256('DAO')){
+            moveDao();
+        } else if (sha256(_type) == sha256('ROUTER')) {
+            moveRouter();
+        } else if (sha256(_type) == sha256('UTILS')){
+            moveUtils();
         }
     }
-    function moveDao() public nonReentrant{
+
+    function updateDao(address _address) internal {
+        proposedDao = _address;
+        proposedDaoChange = true;
+        daoChangeStart = now;
+    }
+    function moveDao() internal {
         require(proposedDao != address(0), "No DAO proposed");
         require((now - daoChangeStart) > coolOffPeriod, "Must be pass cool off");
-        checkDaoChange(proposedDao);
+        if(!hasQuorum(proposedDao)){
+            proposedDaoChange = false;
+        }
         if(proposedDaoChange){
-            UTILS.updateDAO(proposedDao);
-            uint reserve = iERC20(VETHER).balanceOf(address(this));
-            iERC20(VETHER).transfer(proposedDao, reserve);
+            uint reserve = iERC20(BASE).balanceOf(address(this));
+            iERC20(BASE).transfer(proposedDao, reserve);
             daoHasMoved = true;
             DAO = proposedDao;
             emit NewAddress(msg.sender, proposedDao, mapAddress_Votes[proposedDao], totalWeight, 'DAO');
@@ -255,11 +255,52 @@ contract Dao_Vether {
             proposedDaoChange = false;
         }
     }
-    function checkDaoChange(address _newDao) internal {
-        if(!hasQuorum(_newDao)){
-            proposedDaoChange = false;
+
+    function updateRouter(address _address) internal {
+        proposedRouter = _address;
+        proposedRouterChange = true;
+        routerChangeStart = now;
+        routerHasMoved = false;
+    }
+    function moveRouter() internal {
+        require(proposedRouter != address(0), "No router proposed");
+        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
+        if(!hasQuorum(proposedRouter)){
+            proposedRouterChange = false;
+        }
+        if(proposedRouterChange){
+            _ROUTER = iROUTER(proposedRouter);
+            routerHasMoved = true;
+            emit NewAddress(msg.sender, proposedRouter, mapAddress_Votes[proposedRouter], totalWeight, 'ROUTER');
+            mapAddress_Votes[proposedRouter] = 0;
+            proposedRouter = address(0);
+            proposedRouterChange = false;
         }
     }
+
+    function updateUtils(address _address) internal {
+        proposedUtils = _address;
+        proposedUtilsChange = true;
+        utilsChangeStart = now;
+        utilsHasMoved = false;
+    }
+    function moveUtils() internal {
+        require(proposedUtils != address(0), "No utils proposed");
+        require((now - routerChangeStart) > coolOffPeriod, "Must be pass cool off");
+        if(!hasQuorum(proposedUtils)){
+            proposedUtilsChange = false;
+        }
+        if(proposedUtilsChange){
+            _UTILS = iUTILS(proposedUtils);
+            utilsHasMoved = true;
+            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, '_UTILS');
+            mapAddress_Votes[proposedUtils] = 0;
+            proposedUtils = address(0);
+            proposedUtilsChange = false;
+        }
+    }
+
+    //============================== CONSENSUS ================================//
 
     function countVotes(address _address) internal returns (uint voteWeight){
         mapAddress_Votes[_address] = mapAddress_Votes[_address].sub(mapAddressMember_Votes[_address][msg.sender]);
@@ -279,42 +320,47 @@ contract Dao_Vether {
         }
     }
 
-    //============================== ROUTER ================================//
+    // //============================== _ROUTER ================================//
 
-    function ROUTER() public view returns(address){
+    function ROUTER() public view returns(iROUTER){
         if(daoHasMoved){
             return Dao_Vether(DAO).ROUTER();
         } else {
-            return _router;
+            return _ROUTER;
+        }
+    }
+
+    function UTILS() public view returns(iUTILS){
+        if(daoHasMoved){
+            return Dao_Vether(DAO).UTILS();
+        } else {
+            return _UTILS;
         }
     }
 
     //============================== REWARDS ================================//
     // Rewards
-    function harvest() public {
+    function harvest() public nonReentrant {
         uint reward = calcCurrentReward(msg.sender);
         mapMember_Block[msg.sender] = block.number;
-        iERC20(VETHER).transfer(msg.sender, reward);
+        iERC20(BASE).transfer(msg.sender, reward);
     }
 
     function calcCurrentReward(address member) public view returns(uint){
         uint blocksSinceClaim = block.number.sub(mapMember_Block[member]);
-        uint share = calcDailyReward(member);
+        uint share = calcReward(member);
         uint reward = share.mul(blocksSinceClaim).div(blocksPerDay);
-        uint reserve = iERC20(VETHER).balanceOf(address(this));
+        uint reserve = iERC20(BASE).balanceOf(address(this));
         if(reward >= reserve) {
             reward = reserve;
         }
         return reward;
     }
 
-    function calcDailyReward(address member) public view returns(uint){
+    function calcReward(address member) public view returns(uint){
         uint weight = mapMember_Weight[member];
-        uint reserve = iERC20(VETHER).balanceOf(address(this)).div(daysToEarnFactor);
-        return UTILS.calcShare(weight, totalWeight, reserve);
+        uint reserve = iERC20(BASE).balanceOf(address(this)).div(daysToEarnFactor);
+        return _UTILS.calcShare(weight, totalWeight, reserve);
     }
 
 }
-
-
-   

@@ -29,9 +29,11 @@ Vether Nuances
 
 * Does not have DAO address, cannot change DAO.
 
-1) Modify Utils to not ask Vether for DAO address, set DAO address in deploy
-2) Modify Router to set DAO address in deploy (and Pool to also set)
+1) DAO holds UTILS && ROUTER
+2) POOL and ROUTER has DAO address
 3) Modify DAO to not ask Vether for DAO address
+4) TransferOver Method
+5) Dao_Vether, Router_Vether, Pool_Vether, Utils_Vether
 
 Deploy Vether
 Deploy Utils(vether.address)

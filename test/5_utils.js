@@ -87,4 +87,3 @@ async function mathCheck() {
         console.log(_.BN2Str(base), _.BN2Str(js))
     })
 }
-

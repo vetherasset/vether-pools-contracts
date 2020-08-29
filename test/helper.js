@@ -86,7 +86,7 @@ async function logStaker(instance, acc, token) {
   console.log("\n-------------------Staker Details -------------------")
   console.log(`ADDRESS: ${acc} | POOL: ${token}`)
   // console.log(`StakeData: [ ${_.BN2Token(stakeData.baseAmtStaked)} BASE | ${_.BN2Token(stakeData.tokenAmtStaked)} ETH ]`)
-  console.log(`StakeData: [ ${_.BN2Token(stakeData.stakerUnits)} UNITS ]`)
+  console.log(`StakeData: [ ${_.BN2Token(stakerUnits)} UNITS ]`)
   console.log("-----------------------------------------------------------\n")
 }
 async function logETHBalances(acc0, acc1, ETH) {

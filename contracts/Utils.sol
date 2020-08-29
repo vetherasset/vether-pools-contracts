@@ -12,7 +12,7 @@ interface iERC20 {
 
 interface iBASE {
     function mapAddressHasClaimed() external view returns (bool);
-    function DAO() external view returns (address);
+    function DAO() external view returns (iDAO);
 }
 
 interface iROUTER {
@@ -146,20 +146,20 @@ contract Utils {
         DEPLOYER = msg.sender;
     }
 
-    // function setGenesisDao(address _Dao) public onlyDeployer {
-    //     DAO = iDAO(_Dao);
-    // }
-    // function updateDAO(address _Dao) public {
-    //     require(msg.sender == address(DAO), "Must be DAO");
-    //     DAO = iDAO(_Dao);
-    // }
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
 
     //====================================DATA-HELPERS====================================//
 
     function getTokenDetails(address token) public view returns (TokenDetails memory tokenDetails){
+        return getTokenDetailsWithMember(token, msg.sender);
+    }
+
+    function getTokenDetailsWithMember(address token, address member) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
-            tokenDetails.name = 'Ethereum';
-            tokenDetails.symbol = 'ETH';
+            tokenDetails.name = 'Binance Chain Token';
+            tokenDetails.symbol = 'BNB';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * 10**18;
             tokenDetails.balance = msg.sender.balance;
@@ -168,7 +168,7 @@ contract Utils {
             tokenDetails.symbol = iERC20(token).symbol();
             tokenDetails.decimals = iERC20(token).decimals();
             tokenDetails.totalSupply = iERC20(token).totalSupply();
-            tokenDetails.balance = iERC20(token).balanceOf(msg.sender);
+            tokenDetails.balance = iERC20(token).balanceOf(member);
         }
         tokenDetails.tokenAddress = token;
         return tokenDetails;
@@ -186,7 +186,7 @@ contract Utils {
     }
 
     function getGlobalDetails() public view returns (GlobalDetails memory globalDetails){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
+        iDAO dao = _DAO();
         globalDetails.totalStaked = iROUTER(dao.ROUTER()).totalStaked();
         globalDetails.totalVolume = iROUTER(dao.ROUTER()).totalVolume();
         globalDetails.totalFees = iROUTER(dao.ROUTER()).totalFees();
@@ -197,25 +197,21 @@ contract Utils {
     }
 
     function getPool(address token) public view returns(address payable pool){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return iROUTER(dao.ROUTER()).getPool(token);
+        return iROUTER(_DAO().ROUTER()).getPool(token);
     }
     function tokenCount() public view returns (uint256 count){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return iROUTER(dao.ROUTER()).tokenCount();
+        return iROUTER(_DAO().ROUTER()).tokenCount();
     }
     function allTokens() public view returns (address[] memory _allTokens){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        return tokensInRange(0, iROUTER(dao.ROUTER()).tokenCount()) ;
+        return tokensInRange(0, iROUTER(_DAO().ROUTER()).tokenCount()) ;
     }
     function tokensInRange(uint start, uint count) public view returns (address[] memory someTokens){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i < count; i++){
-            result[i] = iROUTER(dao.ROUTER()).getToken(i);
+            result[i] = iROUTER(_DAO().ROUTER()).getToken(i);
         }
         return result;
     }
@@ -223,13 +219,12 @@ contract Utils {
         return poolsInRange(0, tokenCount());
     }
     function poolsInRange(uint start, uint count) public view returns (address[] memory somePools){
-        iDAO dao = iDAO(iBASE(BASE).DAO());
         if(start.add(count) > tokenCount()){
             count = tokenCount().sub(start);
         }
         address[] memory result = new address[](count);
         for (uint i = 0; i<count; i++){
-            result[i] = getPool(iROUTER(dao.ROUTER()).getToken(i));
+            result[i] = getPool(iROUTER(_DAO().ROUTER()).getToken(i));
         }
         return result;
     }
@@ -328,22 +323,46 @@ contract Utils {
 
     function calcValueInBase(address token, uint amount) public view returns (uint value){
        address payable pool = getPool(token);
-       return iPOOL(pool).calcValueInBase(amount);
+       return calcValueInBaseWithPool(pool, amount);
     }
 
     function calcValueInToken(address token, uint amount) public view returns (uint value){
         address payable pool = getPool(token);
-        return iPOOL(pool).calcValueInToken(amount);
+        return calcValueInTokenWithPool(pool, amount);
     }
 
     function calcTokenPPinBase(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iPOOL(pool).calcTokenPPinBase(amount);
+        return  calcTokenPPinBaseWithPool(pool, amount);
    }
 
     function calcBasePPinToken(address token, uint amount) public view returns (uint _output){
         address payable pool = getPool(token);
-        return  iPOOL(pool).calcBasePPinToken(amount);
+        return  calcValueInBaseWithPool(pool, amount);
+    }
+
+    function calcValueInBaseWithPool(address payable pool, uint amount) public view returns (uint value){
+       uint _baseAmt = iPOOL(pool).baseAmt();
+       uint _tokenAmt = iPOOL(pool).tokenAmt();
+       return (amount.mul(_baseAmt)).div(_tokenAmt);
+    }
+
+    function calcValueInTokenWithPool(address payable pool, uint amount) public view returns (uint value){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return (amount.mul(_tokenAmt)).div(_baseAmt);
+    }
+
+    function calcTokenPPinBaseWithPool(address payable pool, uint amount) public view returns (uint _output){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return  calcSwapOutput(amount, _tokenAmt, _baseAmt);
+   }
+
+    function calcBasePPinTokenWithPool(address payable pool, uint amount) public view returns (uint _output){
+        uint _baseAmt = iPOOL(pool).baseAmt();
+        uint _tokenAmt = iPOOL(pool).tokenAmt();
+        return  calcSwapOutput(amount, _baseAmt, _tokenAmt);
     }
 
     //====================================CORE-MATH====================================//

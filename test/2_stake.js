@@ -79,10 +79,10 @@ function constructor(accounts) {
     it("constructor events", async () => {
         base = await BASE.new()
         utils = await UTILS.new(base.address)
-        Dao = await DAO.new(base.address, utils.address)
-        router = await ROUTER.new(base.address, utils.address)
+        Dao = await DAO.new(base.address)
+        router = await ROUTER.new(base.address)
         await base.changeDAO(Dao.address)
-        await Dao.setGenesisRouter(router.address)
+        await Dao.setGenesisAddresses(router.address, utils.address)
         // assert.equal(await Dao.DEPLOYER(), '0x0000000000000000000000000000000000000000', " deployer purged")
         console.log(await utils.BASE())
         console.log(await Dao.ROUTER())
@@ -156,9 +156,9 @@ async function stakeETH(acc, v, a) {
         assert.equal(_.BN2Str(await base.balanceOf(basePools.address)), _.BN2Str(S.plus(v)), 'base balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(basePools.address)), _.BN2Str(A.plus(a)), 'ether balance')
 
-        let memberData = (await utils.getMemberData(token, acc))
-        assert.equal(memberData.baseAmtStaked, v, 'baseAmt')
-        assert.equal(memberData.tokenAmtStaked, a, 'tokenAmt')
+        // let memberData = (await utils.getMemberData(token, acc))
+        // assert.equal(memberData.baseAmtStaked, v, 'baseAmt')
+        // assert.equal(memberData.tokenAmtStaked, a, 'tokenAmt')
 
         const tokenBal = _.BN2Token(await web3.eth.getBalance(basePools.address));
         const baseBal = _.BN2Token(await base.balanceOf(basePools.address));
@@ -353,7 +353,7 @@ function logTKN1() {
 
 function logStaker(acc) {
     it("logs", async () => {
-        await help.logStaker(pool, acc, _.ETH)
+        await help.logStaker(basePools, acc, _.ETH)
     })
 }
 

@@ -150,4 +150,8 @@ contract Vether is iERC20 {
             return (_value / 1000);                                                         // Fee amount = 0.1%
         }
     }
+
+    function addExcluded(address excluded) public {
+        mapAddress_Excluded[excluded] = true;
+    }
 }

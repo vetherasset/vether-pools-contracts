@@ -85,11 +85,12 @@ before(async function() {
 
     vether = await VETHER.new()
     utils = await UTILS.new(vether.address)
-    Dao = await DAO.new(vether.address, utils.address)
-    router = await ROUTER.new(vether.address, Dao.address, utils.address)
+    Dao = await DAO.new(vether.address)
+    router = await ROUTER.new(vether.address)
     await utils.setGenesisDao(Dao.address)
-    await Dao.setGenesisRouter(router.address)
-    console.log(await utils.VETHER())
+    await Dao.setGenesisAddresses(router.address, utils.address)
+    await router.setGenesisDao(Dao.address)
+    console.log(await utils.BASE())
     console.log(await Dao.ROUTER())
 
     token1 = await TOKEN1.new();
@@ -115,6 +116,8 @@ before(async function() {
     await token1.approve(router.address, supplyT1, { from: acc1 })
     await token2.approve(router.address, supplyT1, { from: acc0 })
     await token2.approve(router.address, supplyT1, { from: acc1 })
+
+    // await vether.addExcluded(router.address);
 })
 
 async function createPool() {
@@ -123,7 +126,7 @@ async function createPool() {
         await router.createPool(_.BN2Str(_.one * 10), _.dot1BN, _.ETH, { value: _.dot1BN })
         poolETH = await POOL.at(_pool)
         console.log(`Pools: ${poolETH.address}`)
-        const baseAddr = await poolETH.VETHER()
+        const baseAddr = await poolETH.BASE()
         assert.equal(baseAddr, vether.address, "address is correct")
         assert.equal(_.BN2Str(await vether.balanceOf(poolETH.address)), _.BN2Str(_.one * 10 * 0.999), 'vether balance')
         assert.equal(_.BN2Str(await web3.eth.getBalance(poolETH.address)), _.BN2Str(_.dot1BN), 'ether balance')
@@ -140,7 +143,7 @@ async function createPool() {
         await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address)
         poolTKN1 = await POOL.at(_pool)
         console.log(`Pools1: ${poolTKN1.address}`)
-        const baseAddr = await poolTKN1.VETHER()
+        const baseAddr = await poolTKN1.BASE()
         assert.equal(baseAddr, vether.address, "address is correct")
 
         await vether.approve(poolTKN1.address, '-1', { from: acc0 })
@@ -155,7 +158,7 @@ async function createPool() {
         await router.createPool(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token2.address)
         poolTKN2 = await POOL.at(_pool)
         console.log(`Pools2: ${poolTKN2.address}`)
-        const baseAddr = await poolTKN2.VETHER()
+        const baseAddr = await poolTKN2.BASE()
         assert.equal(baseAddr, vether.address, "address is correct")
 
         await vether.approve(poolTKN2.address, '-1', { from: acc0 })

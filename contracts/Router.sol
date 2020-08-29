@@ -17,7 +17,7 @@ interface iERC20 {
 }
 interface iBASE {
     function secondsPerEra() external view returns (uint);
-    function DAO() external view returns (address);
+    function DAO() external view returns (iDAO);
 }
 interface iUTILS {
     function calcPart(uint bp, uint total) external pure returns (uint part);
@@ -25,26 +25,18 @@ interface iUTILS {
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
     function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
-    function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
-    function getPoolAge(address token) external view returns(uint age);
+    // function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
+    // function getPoolAge(address token) external view returns(uint age);
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
     function getPoolShareAssym(address token, uint units, bool toBase) external view returns(uint baseAmt, uint tokenAmt, uint outputAmt);
+    function calcValueInBase(address token, uint amount) external view returns (uint value);
+    function calcValueInToken(address token, uint amount) external view returns (uint value);
+    function calcValueInBaseWithPool(address payable pool, uint amount) external view returns (uint value);
 }
 interface iDAO {
     function ROUTER() external view returns(address);
+    function UTILS() external view returns(iUTILS);
 }
-
-// interface iROUTER {
-//     function totalStaked() external view returns (uint);
-//     function totalVolume() external view returns (uint);
-//     function totalFees() external view returns (uint);
-//     function unstakeTx() external view returns (uint);
-//     function stakeTx() external view returns (uint);
-//     function swapTx() external view returns (uint);
-//     function tokenCount() external view returns(uint);
-//     function getToken(uint) external view returns(address);
-//     function getPool(address) external view returns(address payable);
-// }
 
 // SafeMath
 library SafeMath {
@@ -87,7 +79,7 @@ contract Pool is iERC20 {
     using SafeMath for uint;
 
     address public BASE;
-    iUTILS public UTILS;
+    // iUTILS public UTILS;
     address public TOKEN;
 
     uint public one = 10**18;
@@ -108,9 +100,6 @@ contract Pool is iERC20 {
     uint public volume;
     uint public txCount;
     
-    mapping(address => uint) private member_baseAmtStaked;
-    mapping(address => uint) private member_tokenAmtStaked;
-   
     // Only Router can execute
     modifier onlyRouter() {
         _isRouter();
@@ -118,23 +107,25 @@ contract Pool is iERC20 {
     }
 
     function _isRouter() internal view {
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        require(msg.sender == dao.ROUTER(), "RouterErr");
+        // iDAO dao = _DAO();
+        require(msg.sender == _DAO().ROUTER(), "RouterErr");
     }
 
-    constructor (address _base, iUTILS _utils, address _token) public payable {
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
+
+    constructor (address _base, address _token) public payable {
 
         BASE = _base;
-        UTILS = _utils;
         TOKEN = _token;
-        iDAO dao = iDAO(iBASE(BASE).DAO());
 
-        string memory poolName = "VetherPoolV1-";
-        string memory poolSymbol = "VPT1-";
+        string memory poolName = "SpartanPoolV1-";
+        string memory poolSymbol = "SPT1-";
 
         if(_token == address(0)){
-            _name = string(abi.encodePacked(poolName, "Ethereum"));
-            _symbol = string(abi.encodePacked(poolSymbol, "ETH"));
+            _name = string(abi.encodePacked(poolName, "BinanceCoin"));
+            _symbol = string(abi.encodePacked(poolSymbol, "BNB"));
         } else {
             _name = string(abi.encodePacked(poolName, iERC20(_token).name()));
             _symbol = string(abi.encodePacked(poolSymbol, iERC20(_token).symbol()));
@@ -145,12 +136,11 @@ contract Pool is iERC20 {
     }
 
     function _checkApprovals() external onlyRouter{
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        if(iERC20(BASE).allowance(address(this), dao.ROUTER()) == 0){
+        if(iERC20(BASE).allowance(address(this), _DAO().ROUTER()) == 0){
             if(TOKEN != address(0)){
-                iERC20(TOKEN).approve(dao.ROUTER(), (2**256)-1);
+                iERC20(TOKEN).approve(_DAO().ROUTER(), (2**256)-1);
             }
-        iERC20(BASE).approve(dao.ROUTER(), (2**256)-1);
+        iERC20(BASE).approve(_DAO().ROUTER(), (2**256)-1);
         }
     }
 
@@ -205,8 +195,7 @@ contract Pool is iERC20 {
     function _mint(address account, uint256 amount) external onlyRouter {
         totalSupply = totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
-        iDAO dao = iDAO(iBASE(BASE).DAO());
-        _allowances[account][dao.ROUTER()] += amount;
+        _allowances[account][_DAO().ROUTER()] += amount;
         emit Transfer(address(0), account, amount);
     }
     // Burn supply
@@ -223,6 +212,10 @@ contract Pool is iERC20 {
         totalSupply = totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
+
+
+    //==================================================================================//
+    // Extended Asset Functions
 
     // TransferTo function
     function transferTo(address recipient, uint256 amount) public returns (bool) {
@@ -244,10 +237,7 @@ contract Pool is iERC20 {
         }
     }
 
-    //==================================================================================//
-    // Dividend functions
-
-    function add(address token, uint amount) public returns (bool success) {
+    function add(address token, uint amount) public payable returns (bool success) {
         if(token == BASE){
             iERC20(BASE).transferFrom(msg.sender, address(this), amount);
             baseAmt = baseAmt.add(amount);
@@ -256,6 +246,9 @@ contract Pool is iERC20 {
             iERC20(TOKEN).transferFrom(msg.sender, address(this), amount);
             tokenAmt = tokenAmt.add(amount); 
             return true;
+        } else if (token == address(0)){
+            require((amount == msg.value), "InputErr");
+            tokenAmt = tokenAmt.add(amount); 
         } else {
             return false;
         }
@@ -283,8 +276,8 @@ contract Pool is iERC20 {
     }
 
     function _decrementPoolBalances(uint _baseAmt, uint _tokenAmt)  external onlyRouter  {
-        uint _unstakedBase = UTILS.calcShare(_baseAmt, baseAmt, baseAmtStaked);
-        uint _unstakedToken = UTILS.calcShare(_tokenAmt, tokenAmt, tokenAmtStaked);
+        uint _unstakedBase = _DAO().UTILS().calcShare(_baseAmt, baseAmt, baseAmtStaked);
+        uint _unstakedToken = _DAO().UTILS().calcShare(_tokenAmt, tokenAmt, tokenAmtStaked);
         baseAmtStaked = baseAmtStaked.sub(_unstakedBase);
         tokenAmtStaked = tokenAmtStaked.sub(_unstakedToken); 
         __decrementPool(_baseAmt, _tokenAmt); 
@@ -295,50 +288,12 @@ contract Pool is iERC20 {
         tokenAmt = tokenAmt.sub(_tokenAmt); 
     }
 
-    function _addMemberData(address _member, uint _baseAmtStaked, uint _tokenAmtStaked)  external onlyRouter  {
-        member_baseAmtStaked[_member] += _baseAmtStaked;
-        member_tokenAmtStaked[_member] += _tokenAmtStaked;
-    }
-
-    function _removeDataForMember(address _member, uint _units)  external onlyRouter {
-        uint stakeUnits = balanceOf(_member);
-        uint _baseAmt = UTILS.calcShare(_units, stakeUnits, member_baseAmtStaked[_member]);
-        uint _tokenAmt = UTILS.calcShare(_units, stakeUnits, member_tokenAmtStaked[_member]);
-        member_baseAmtStaked[_member] = member_baseAmtStaked[_member].sub(_baseAmt);
-        member_tokenAmtStaked[_member] = member_tokenAmtStaked[_member].sub(_tokenAmt);
-    }
-
     function _addPoolMetrics(uint _volume, uint _fee) external onlyRouter  {
         txCount += 1;
         volume += _volume;
         fees += _fee;
     }
 
-    //==================================================================================//
-    // Helper functions
-
-    function getBaseAmtStaked(address member) public view returns(uint){
-        return member_baseAmtStaked[member];
-    }
-    function getTokenAmtStaked(address member) public view returns(uint){
-        return member_tokenAmtStaked[member];
-    }
-
-    function calcValueInBase(uint a) public view returns (uint value){
-       return (a.mul(baseAmt)).div(tokenAmt);
-    }
-
-    function calcValueInToken(uint v) public view returns (uint value){
-        return (v.mul(tokenAmt)).div(baseAmt);
-    }
-
-   function calcTokenPPinBase(uint amount) public view returns (uint output){
-        return  UTILS.calcSwapOutput(amount, tokenAmt, baseAmt);
-    }
-
-    function calcBasePPinToken(uint amount) public view returns (uint output){
-        return  UTILS.calcSwapOutput(amount, baseAmt, tokenAmt);
-    }
 }
 
 contract Router {
@@ -346,8 +301,6 @@ contract Router {
     using SafeMath for uint;
 
     address public BASE;
-    // iDAO public DAO;
-    iUTILS public UTILS;
     address public DEPLOYER;
 
     // uint256 public currentEra;
@@ -377,14 +330,20 @@ contract Router {
         _;
     }
 
-    constructor (address _base, iUTILS _utils) public payable {
-        BASE = _base; //0x3E2e792587Ceb6c1090a8A42F3EFcFad818d266D;
-        // DAO = _Dao;
-        UTILS = _utils; //0x17218e58Fdf07c989faCca25De4c6FdB06502186;
+    constructor (address _base) public payable {
+        BASE = _base;
         DEPLOYER = msg.sender;
     }
 
-    function migrateRouterData(address oldRouter) public onlyDeployer {
+    function _DAO() internal view returns(iDAO) {
+        return iBASE(BASE).DAO();
+    }
+
+    receive() external payable {
+        buyTo(msg.value, address(0), msg.sender);
+    }
+
+    function migrateRouterData(address payable oldRouter) public onlyDeployer {
         totalStaked = Router(oldRouter).totalStaked();
         totalVolume = Router(oldRouter).totalVolume();
         totalFees = Router(oldRouter).totalFees();
@@ -393,7 +352,7 @@ contract Router {
         swapTx = Router(oldRouter).swapTx();
     }
 
-    function migrateTokenData(address oldRouter) public onlyDeployer {
+    function migrateTokenData(address payable oldRouter) public onlyDeployer {
         uint tokenCount = Router(oldRouter).tokenCount();
         for(uint i = 0; i<tokenCount; i++){
             address token = Router(oldRouter).getToken(i);
@@ -412,7 +371,7 @@ contract Router {
         require(getPool(token) == address(0), "CreateErr");
         require(token != BASE, "Must not be Base");
         require((inputToken > 0 && inputBase > 0), "Must get tokens for both");
-        Pool newPool = new Pool(BASE, UTILS, token);
+        Pool newPool = new Pool(BASE, token);
         pool = payable(address(newPool));
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
@@ -421,8 +380,9 @@ contract Router {
         isPool[pool] = true;
         totalStaked += _actualInputBase;
         stakeTx += 1;
-        _handleStake(pool, _actualInputBase, _actualInputToken, msg.sender);
+        uint units = _handleStake(pool, _actualInputBase, _actualInputToken, msg.sender);
         emit NewPool(token, pool, now);
+        emit Staked(msg.sender, _actualInputBase, _actualInputToken, units);
         return pool;
     }
 
@@ -438,10 +398,10 @@ contract Router {
         address payable pool = getPool(token);
         uint _actualInputToken = _handleTransferIn(token, inputToken, pool);
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
-        units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
-        emit Staked(member, _actualInputBase, _actualInputToken, units);
         totalStaked += _actualInputBase;
         stakeTx += 1;
+        units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
+        emit Staked(member, _actualInputBase, _actualInputToken, units);
         return units;
     }
 
@@ -451,8 +411,7 @@ contract Router {
         uint _S = Pool(pool).baseAmt().add(_baseAmt);
         uint _A = Pool(pool).tokenAmt().add(_tokenAmt);
         Pool(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        Pool(pool)._addMemberData(_member, _baseAmt, _tokenAmt);
-        _units = UTILS.calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
+        _units = _DAO().UTILS().calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
         Pool(pool)._mint(_member, _units);
         return _units;
     }
@@ -463,7 +422,7 @@ contract Router {
     // Unstake % for self
     function unstake(uint basisPoints, address token) public returns (bool success) {
         require((basisPoints > 0 && basisPoints <= 10000), "InputErr");
-        uint _units = UTILS.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        uint _units = _DAO().UTILS().calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
         unstakeExact(_units, token);
         return true;
     }
@@ -472,11 +431,11 @@ contract Router {
     function unstakeExact(uint units, address token) public returns (bool success) {
         address payable pool = getPool(token);
         address payable member = msg.sender;
-        (uint _outputBase, uint _outputToken) = UTILS.getPoolShare(token, units);
-        _handleUnstake(pool, units, _outputBase, _outputToken, member);
-        emit Unstaked(member, _outputBase, _outputToken, units);
+        (uint _outputBase, uint _outputToken) = _DAO().UTILS().getPoolShare(token, units);
         totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
+        _handleUnstake(pool, units, _outputBase, _outputToken, member);
+        emit Unstaked(member, _outputBase, _outputToken, units);
         _handleTransferOut(token, _outputToken, pool, member);
         _handleTransferOut(BASE, _outputBase, pool, member);
         return true;
@@ -484,7 +443,7 @@ contract Router {
 
     // // Unstake % Asymmetrically
     function unstakeAsymmetric(uint basisPoints, bool toBase, address token) public returns (uint outputAmount){
-        uint _units = UTILS.calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
+        uint _units = _DAO().UTILS().calcPart(basisPoints, iERC20(getPool(token)).balanceOf(msg.sender));
         outputAmount = unstakeExactAsymmetric(_units, toBase, token);
         return outputAmount;
     }
@@ -492,11 +451,11 @@ contract Router {
     function unstakeExactAsymmetric(uint units, bool toBase, address token) public returns (uint outputAmount){
         address payable pool = getPool(token);
         require(units < iERC20(pool).totalSupply(), "InputErr");
-        (uint _outputBase, uint _outputToken, uint _outputAmount) = UTILS.getPoolShareAssym(token, units, toBase);
-        _handleUnstake(pool, units, _outputBase, _outputToken, msg.sender);
-        emit Unstaked(msg.sender, _outputBase, _outputToken, units);
+        (uint _outputBase, uint _outputToken, uint _outputAmount) = _DAO().UTILS().getPoolShareAssym(token, units, toBase);
         totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
+        _handleUnstake(pool, units, _outputBase, _outputToken, msg.sender);
+        emit Unstaked(msg.sender, _outputBase, _outputToken, units);
         _handleTransferOut(token, _outputToken, pool, msg.sender);
         _handleTransferOut(BASE, _outputBase, pool, msg.sender);
         return _outputAmount;
@@ -505,7 +464,6 @@ contract Router {
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
         Pool(pool)._checkApprovals();
         Pool(pool)._decrementPoolBalances(_outputBase, _outputToken);
-        Pool(pool)._removeDataForMember(_member, _units);
         Pool(pool).burnFrom(_member, _units);
         return true;
     } 
@@ -521,16 +479,21 @@ contract Router {
         address payable pool = getPool(token);
         Pool(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(BASE, amount, pool);
+        // uint _minusFee = _getFee(_actualAmount);
         (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
         // addDividend(pool, outputAmount, fee);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
-        totalFees += Pool(pool).calcValueInBase(fee);
+        totalFees += _DAO().UTILS().calcValueInBase(token, fee);
         swapTx += 1;
         _handleTransferOut(token, outputAmount, pool, member);
         emit Swapped(BASE, token, _actualAmount, 0, outputAmount, fee, member);
         return (outputAmount, fee);
     }
+
+    // function _getFee(uint amount) private view returns(uint){
+    //     return amount
+    // }
 
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
         (outputAmount, fee) = sellTo(amount, token, msg.sender);
@@ -574,10 +537,10 @@ contract Router {
             // addDividend(poolFrom, _yy, _feey);
             iERC20(BASE).transferFrom(poolFrom, poolTo, _yy); 
             (uint _zz, uint _feez) = _swapBaseToToken(poolTo, _yy);              // Buy to token
-            totalFees += Pool(poolTo).calcValueInBase(_feez);
+            totalFees += _DAO().UTILS().calcValueInBase(toToken, _feez);
             // addDividend(poolTo, _zz, _feez);
             _transferAmount = _yy; outputAmount = _zz; 
-            fee = _feez + Pool(poolTo).calcValueInToken(_feey);
+            fee = _feez + _DAO().UTILS().calcValueInToken(toToken, _feey);
         }
         swapTx += 1;
         _handleTransferOut(toToken, outputAmount, poolTo, msg.sender);
@@ -588,20 +551,22 @@ contract Router {
     function _swapBaseToToken(address payable pool, uint _x) internal returns (uint _y, uint _fee){
         uint _X = Pool(pool).baseAmt();
         uint _Y = Pool(pool).tokenAmt();
-        _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-        _fee = UTILS.calcSwapFee(_x, _X, _Y);
+        _y =  _DAO().UTILS().calcSwapOutput(_x, _X, _Y);
+        _fee = _DAO().UTILS().calcSwapFee(_x, _X, _Y);
         Pool(pool)._setPoolAmounts(_X.add(_x), _Y.sub(_y));
         _updatePoolMetrics(pool, _y+_fee, _fee, false);
+        // _checkEmission();
         return (_y, _fee);
     }
 
     function _swapTokenToBase(address payable pool, uint _x) internal returns (uint _y, uint _fee){
         uint _X = Pool(pool).tokenAmt();
         uint _Y = Pool(pool).baseAmt();
-        _y =  UTILS.calcSwapOutput(_x, _X, _Y);
-        _fee = UTILS.calcSwapFee(_x, _X, _Y);
+        _y =  _DAO().UTILS().calcSwapOutput(_x, _X, _Y);
+        _fee = _DAO().UTILS().calcSwapFee(_x, _X, _Y);
         Pool(pool)._setPoolAmounts(_Y.sub(_y), _X.add(_x));
         _updatePoolMetrics(pool, _y+_fee, _fee, true);
+        // _checkEmission();
         return (_y, _fee);
     }
 
@@ -609,8 +574,8 @@ contract Router {
         if(_toBase){
             Pool(pool)._addPoolMetrics(_txSize, _fee);
         } else {
-            uint _txBase = Pool(pool).calcValueInBase(_txSize);
-            uint _feeBase = Pool(pool).calcValueInBase(_fee);
+            uint _txBase = _DAO().UTILS().calcValueInBaseWithPool(pool, _txSize);
+            uint _feeBase = _DAO().UTILS().calcValueInBaseWithPool(pool, _fee);
             Pool(pool)._addPoolMetrics(_txBase, _feeBase);
         }
     }
@@ -619,41 +584,17 @@ contract Router {
     //==================================================================================//
     // Revenue Functions
 
-    // Every swap after every Era, updates the balance
-    // Every swap takes 1000th of the reserve, adds it baseAmt balance
-    // Every swap charges 30 BP from swapper, burns it
+    // Every swap, calculate fee, add to reserve
+    // Every era, send reserve to DAO
 
     // function _checkEmission() private {
     //     if (now >= nextEraTime) {                                                           // If new Era and allowed to emit
     //         currentEra += 1;                                                               // Increment Era
     //         nextEraTime = now + iBASE(BASE).secondsPerEra() + 100;                     // Set next Era time
-    //         syncReserve();
+    //         uint reserve = iERC20(BASE).balanceOf(address(this));
+    //         iERC20(BASE).transfer(address(_DAO()), reserve);
     //         emit NewEra(currentEra, nextEraTime, reserve);                               // Emit Event
     //     }
-    // }
-
-    // function syncReserves() public {
-    //     reserve = iERC20(BASE).balanceOf(address(this));
-    //     // burn income
-    // }
-
-    // function payDividends(address token) public {
-    //     uint dividend = getDividend(token);
-    //     reserve = reserve.sub(dividend);
-    //     Pool(pool).add(BASE, dividend);
-    // }
-
-    // function getSwapShare(uint amount, uint fee) public view returns(uint share) {
-    //     uint dayCount = UTILS.getPoolAge(address(0));
-    //     uint txPerDay = swapTx.div(dayCount); // Average tx per day, eg 200
-    //     uint txShare = reserve.div(txPerDay); // txShare is reserve / 200 
-    //     return txShare.mul(fee).div(amount); // 10% slip -> 10% of txShare
-    // }
-
-    // function addDividend(address payable pool, uint outputAmount, uint fee) private {
-    //     uint dividend = getSwapShare(outputAmount, fee);
-    //     reserve = reserve.sub(dividend);
-    //     Pool(pool).add(BASE, dividend);
     // }
 
     //==================================================================================//

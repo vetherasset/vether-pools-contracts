@@ -3,19 +3,6 @@
   "abi": [
     {
       "inputs": [],
-      "name": "TOKEN",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "baseAmt",
       "outputs": [
         {

@@ -327,29 +327,29 @@ contract Dao_Vether {
         ID +=1;
     }
 
-    function voteIDChange(uint ID) public nonReentrant returns (uint voteWeight) {
-        voteWeight = countVotesID(ID);
-        updateIDChange(ID);
-        emit NewVoteParam(msg.sender, ID, voteWeight, mapID_Votes[ID], mapID_Type[ID]);
+    function voteIDChange(uint _ID) public nonReentrant returns (uint voteWeight) {
+        voteWeight = countVotesID(_ID);
+        updateIDChange(_ID);
+        emit NewVoteParam(msg.sender, _ID, voteWeight, mapID_Votes[_ID], mapID_Type[_ID]);
     }
 
-    function updateIDChange(uint ID) internal {
-        if(hasQuorumID(ID)){
-            mapID_Start[ID] = now;
+    function updateIDChange(uint _ID) internal {
+        if(hasQuorumID(_ID)){
+            mapID_Start[_ID] = now;
             emit ParamProposalFinalising(msg.sender, ID, now+coolOffPeriod, mapID_Type[ID]);
         }
     }
 
-    function executeID(uint ID) public nonReentrant {
-        bytes memory _type = bytes(mapID_Type[ID]);
+    function executeID(uint _ID) public nonReentrant {
+        bytes memory _type = bytes(mapID_Type[_ID]);
         if(sha256(_type) == sha256('FUNDS')){
-            FUNDS_CAP = mapID_Value[ID];
+            FUNDS_CAP = mapID_Value[_ID];
         } else if (sha256(_type) == sha256('DAYS')) {
-            daysToEarnFactor = mapID_Value[ID];
+            daysToEarnFactor = mapID_Value[_ID];
         } else if (sha256(_type) == sha256('COOL')){
-            coolOffPeriod = mapID_Value[ID];
+            coolOffPeriod = mapID_Value[_ID];
         }
-        emit NewParam(msg.sender, ID, mapID_Votes[ID], totalWeight, mapID_Type[ID]);
+        emit NewParam(msg.sender, ID, mapID_Votes[_ID], totalWeight, mapID_Type[_ID]);
     }
 
     //============================== CONSENSUS ================================//

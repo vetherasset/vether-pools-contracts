@@ -158,8 +158,8 @@ contract Utils_Vether {
 
     function getTokenDetailsWithMember(address token, address member) public view returns (TokenDetails memory tokenDetails){
         if(token == address(0)){
-            tokenDetails.name = 'Binance Chain Token';
-            tokenDetails.symbol = 'BNB';
+            tokenDetails.name = 'ETHEREUM';
+            tokenDetails.symbol = 'ETH';
             tokenDetails.decimals = 18;
             tokenDetails.totalSupply = 100000000 * 10**18;
             tokenDetails.balance = msg.sender.balance;
@@ -377,6 +377,13 @@ contract Utils_Vether {
         // y = (x * x * Y) / (x + X)^2
         uint numerator = x.mul(x.mul(Y));
         uint denominator = (x.add(X)).mul(x.add(X));
+        return numerator.div(denominator);
+    }
+
+    function  calcSwapInputFee(uint x, uint X) public pure returns (uint output){
+        // slip = (x * x) / (x + X)
+        uint numerator = x.mul(x);
+        uint denominator = x.add(X));
         return numerator.div(denominator);
     }
 

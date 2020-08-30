@@ -37,10 +37,12 @@ Vether Nuances
 
 Deploy Vether
 Deploy Utils(vether.address)
-Deploy Dao(vether.address, util.address)
-Deploy router(vether.address, Dao.address, util.address)
-Set Genesis DAO utils.setGenesisDao(Dao.address)
-Set Genesis Router Dao.setGenesisRouter(router.address)
+Deploy Dao(vether.address)
+Deploy router(vether.address)
+
+Utils Genesis DAO utils.setGenesisDao(Dao.address)
+Dao Genesis Router Dao.setGenesisAddresses(router.address, utils.address)
+Router Genesis DAO router.setGenesisDao(Dao.address)
 
 ### Upgrade DAO && Router
 Deploy new Dao(vether.address, util.address)
@@ -88,6 +90,18 @@ Vote for new DAO:
 
 0x25c778E8b62C15Df6586e66f0AC69775199fa5d9 vpt-usdt
 0x63933653d869099d5d282f76d6b23692c7d2c32c vpt-eth
+
+#### Version4
+0xec2fA91989e335F616177e4F3A233a69755a5f80 utils
+0xCc44719a8bB550505E51BfB38387766eb8fbf16D dao
+0xDFBB81D71d5237c17257827e6e62F9764843a462 router
+
+#### Mainnet
+0x4Ba6dDd7b89ed838FEd25d208D4f644106E34279 vether
+
+
+
+
 
 ## Bugs
 

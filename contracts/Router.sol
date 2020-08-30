@@ -120,7 +120,7 @@ contract Pool is iERC20 {
         BASE = _base;
         TOKEN = _token;
 
-        string memory poolName = "SpartanPoolV1-";
+        string memory poolName = "VetherPoolV1-";
         string memory poolSymbol = "SPT1-";
 
         if(_token == address(0)){

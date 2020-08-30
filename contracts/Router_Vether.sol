@@ -486,9 +486,9 @@ contract Router_Vether {
         address payable pool = getPool(token);
         Pool_Vether(pool)._checkApprovals();
         uint _actualAmount = _handleTransferIn(BASE, amount, pool);
-        // uint _minusFee = _getFee(_actualAmount);
+        // uint _minusFee = _getFeeBase(_actualAmount, token);
         (outputAmount, fee) = _swapBaseToToken(pool, _actualAmount);
-        // addDividend(pool, outputAmount, fee);
+        // processFee(BASE);
         totalStaked += _actualAmount;
         totalVolume += _actualAmount;
         totalFees += _DAO().UTILS().calcValueInBase(token, fee);
@@ -498,8 +498,11 @@ contract Router_Vether {
         return (outputAmount, fee);
     }
 
-    // function _getFee(uint amount) private view returns(uint){
-    //     return amount
+    // function _getFeeBase(uint _x, address payable _pool) private view returns(uint){
+    //     uint _X = Pool_Vether(_pool).baseAmt();
+    //     uint _feeShare = Dao_Vether.feeShare();
+    //     uint _fee = UTILS.calcSwapInputFee(_x, _X).div(_feeShare);
+    //     return _X.sub(_fee);
     // }
 
     function sell(uint amount, address token) public payable returns (uint outputAmount, uint fee){
@@ -595,13 +598,22 @@ contract Router_Vether {
     // Every swap, calculate fee, add to reserve
     // Every era, send reserve to DAO
 
-    // function _checkEmission() private {
+    // function _checkEmission(address token) private {
     //     if (now >= nextEraTime) {                                                           // If new Era and allowed to emit
     //         currentEra += 1;                                                               // Increment Era
-    //         nextEraTime = now + iBASE(BASE).secondsPerEra() + 100;                     // Set next Era time
-    //         uint reserve = iERC20(BASE).balanceOf(address(this));
-    //         iERC20(BASE).transfer(address(_DAO()), reserve);
+    //         nextEraTime = now + iBASE(token).secondsPerEra() + 100;                     // Set next Era time
+    //         uint reserve = iERC20(token).balanceOf(address(this));
+    //         iERC20(token).transfer(address(_DAO()), reserve);
     //         emit NewEra(currentEra, nextEraTime, reserve);                               // Emit Event
+    //     }
+    // }
+
+    // function processFee(address token) public {
+    //     uint balance = iERC20(token).balanceOf(address(this));
+    //     if(token == BASE){
+    //         iERC20(token).transfer(address(_DAO()), balance);
+    //     } else {
+
     //     }
     // }
 

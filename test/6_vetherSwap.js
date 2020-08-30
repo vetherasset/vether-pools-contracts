@@ -13,7 +13,7 @@ const math = require('./math.js');
 const help = require('./helper.js');
 
 var VETHER = artifacts.require("./Vether.sol");
-var DAO = artifacts.require("./Dao.sol");
+var DAO = artifacts.require("./Dao_Vether.sol");
 var ROUTER = artifacts.require("./Router_Vether.sol");
 var POOL = artifacts.require("./Pool_Vether.sol");
 var UTILS = artifacts.require("./Utils_Vether.sol");

@@ -32,6 +32,8 @@ contract('SPT', function (accounts) {
     lockETH(acc0)
     lockTKN(acc1)
 
+    voteCap(acc0)
+
     voteRouter(acc0)
     tryToMove()
     swapFail(acc0, _.BN2Str(_.one * 10))
@@ -140,6 +142,12 @@ async function createPool() {
 }
 
 async function stakeTKN1(acc) {
+    it("It should revert", async () => {
+        await truffleAssert.reverts(router.stake(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address, { from: acc}));
+    })
+    it("It should increase cap", async () => {
+        await Dao.setCap(_.BN2Str(_.one * 1000),{ from: acc0})
+    })
     it("It should lock", async () => {
         await router.stake(_.BN2Str(_.one * 10), _.BN2Str(_.one * 100), token1.address, { from: acc})
     })
@@ -180,6 +188,23 @@ async function lockTKN(acc) {
         console.log(`mapMemberPool_Balance: ${await Dao.mapMemberPool_Balance(acc, _.ETH)}`)
         console.log(`totalWeight: ${await Dao.totalWeight()}`)
         console.log(`mapMember_Weight: ${await Dao.mapMember_Weight(acc)}`)
+    })
+}
+
+async function voteCap() {
+    it("It should vote", async () => {
+        let ID = await Dao.ID()
+        await Dao.newProposal(_.BN2Str(_.one * 11), 'FUNDS', { from: acc0 })
+        await Dao.voteIDChange(ID, { from: acc1 })
+        console.log(`mapID_Votes: ${await Dao.mapID_Votes('0')}`)
+        console.log(`mapIDMember_Votes: ${await Dao.mapIDMember_Votes('0', acc0)}`)
+        console.log(`hasQuorumID: ${await Dao.hasQuorumID('0')}`)
+        console.log(`value: ${await Dao.mapID_Value('0')}`)
+        console.log(`ID_START: ${await Dao.mapID_Start('0')}`)
+    })
+    it("It should execute", async () => {
+        await Dao.executeID('0', { from: acc1 })
+        console.log(`New CAP: ${await Dao.FUNDS_CAP()}`)
     })
 }
 

@@ -76,6 +76,7 @@ contract Dao_Vether {
     uint public coolOffPeriod = 1 * 2;
     uint public blocksPerDay = 5760;
     uint public daysToEarnFactor = 10;
+    uint public FUNDS_CAP = one * 30; //50000;
 
     address public proposedDao;
     bool public proposedDaoChange;
@@ -102,15 +103,27 @@ contract Dao_Vether {
     mapping(address => mapping(address => uint256)) public mapMemberPool_Weight; // Value of weight for pool
     mapping(address => uint256) public mapMember_Block;
 
-    mapping(address => uint256) public mapAddress_Votes; // Value of weight
-    mapping(address => mapping(address => uint256)) public mapAddressMember_Votes; // Value of weight
+    mapping(address => uint256) public mapAddress_Votes; 
+    mapping(address => mapping(address => uint256)) public mapAddressMember_Votes; 
+
+    uint public ID;
+    mapping(uint256 => string) public mapID_Type;
+    mapping(uint256 => uint256) public mapID_Value;
+    mapping(uint256 => uint256) public mapID_Votes; 
+    mapping(uint256 => uint256) public mapID_Start; 
+    mapping(uint256 => mapping(address => uint256)) public mapIDMember_Votes; 
 
     event MemberLocks(address indexed member,address indexed pool,uint256 amount);
     event MemberUnlocks(address indexed member,address indexed pool,uint256 balance);
     event MemberRegisters(address indexed member,address indexed pool,uint256 amount);
+
     event NewVote(address indexed member,address indexed proposedAddress, uint voteWeight, uint totalVotes, string proposalType);
     event ProposalFinalising(address indexed member,address indexed proposedAddress, uint timeFinalised, string proposalType);
     event NewAddress(address indexed member,address indexed newAddress, uint votesCast, uint totalWeight, string proposalType);
+
+    event NewVoteParam(address indexed member,uint indexed ID, uint voteWeight, uint totalVotes, string proposalType);
+    event ParamProposalFinalising(address indexed member,uint indexed ID, uint timeFinalised, string proposalType);
+    event NewParam(address indexed member,uint indexed ID, uint votesCast, uint totalWeight, string proposalType);
 
     modifier nonReentrant() {
         require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
@@ -137,6 +150,9 @@ contract Dao_Vether {
         coolOffPeriod = _coolOff;
         blocksPerDay = _blocksPerDay;
         daysToEarnFactor = _daysToEarn;
+    }
+    function setCap(uint _fundsCap) public onlyDeployer {
+        FUNDS_CAP = _fundsCap;
     }
 
     function purgeDeployer() public onlyDeployer {
@@ -293,11 +309,47 @@ contract Dao_Vether {
         if(proposedUtilsChange){
             _UTILS = iUTILS(proposedUtils);
             utilsHasMoved = true;
-            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, '_UTILS');
+            emit NewAddress(msg.sender, proposedUtils, mapAddress_Votes[proposedUtils], totalWeight, 'UTILS');
             mapAddress_Votes[proposedUtils] = 0;
             proposedUtils = address(0);
             proposedUtilsChange = false;
         }
+    }
+
+    //============================== GOVERNANCE ================================//
+
+    function newProposal(uint value, string memory typeStr) public {
+        bytes memory _type = bytes(typeStr);
+        require(sha256(_type) == sha256('FUNDS') || sha256(_type) == sha256('DAYS') || sha256(_type) == sha256('COOL'));
+        mapID_Type[ID] = typeStr;
+        mapID_Value[ID] = value;
+        voteIDChange(ID);
+        ID +=1;
+    }
+
+    function voteIDChange(uint ID) public nonReentrant returns (uint voteWeight) {
+        voteWeight = countVotesID(ID);
+        updateIDChange(ID);
+        emit NewVoteParam(msg.sender, ID, voteWeight, mapID_Votes[ID], mapID_Type[ID]);
+    }
+
+    function updateIDChange(uint ID) internal {
+        if(hasQuorumID(ID)){
+            mapID_Start[ID] = now;
+            emit ParamProposalFinalising(msg.sender, ID, now+coolOffPeriod, mapID_Type[ID]);
+        }
+    }
+
+    function executeID(uint ID) public nonReentrant {
+        bytes memory _type = bytes(mapID_Type[ID]);
+        if(sha256(_type) == sha256('FUNDS')){
+            FUNDS_CAP = mapID_Value[ID];
+        } else if (sha256(_type) == sha256('DAYS')) {
+            daysToEarnFactor = mapID_Value[ID];
+        } else if (sha256(_type) == sha256('COOL')){
+            coolOffPeriod = mapID_Value[ID];
+        }
+        emit NewParam(msg.sender, ID, mapID_Votes[ID], totalWeight, mapID_Type[ID]);
     }
 
     //============================== CONSENSUS ================================//
@@ -312,6 +364,24 @@ contract Dao_Vether {
 
     function hasQuorum(address _address) public view returns(bool){
         uint votes = mapAddress_Votes[_address];
+        uint consensus = totalWeight.div(2);
+        if(votes > consensus){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function countVotesID(uint _ID) internal returns (uint voteWeight){
+        mapID_Votes[_ID] = mapID_Votes[_ID].sub(mapIDMember_Votes[_ID][msg.sender]);
+        voteWeight = mapMember_Weight[msg.sender];
+        mapID_Votes[_ID] += voteWeight;
+        mapIDMember_Votes[_ID][msg.sender] = voteWeight;
+        return voteWeight;
+    }
+
+    function hasQuorumID(uint _ID) public view returns(bool){
+        uint votes = mapID_Votes[_ID];
         uint consensus = totalWeight.div(2);
         if(votes > consensus){
             return true;

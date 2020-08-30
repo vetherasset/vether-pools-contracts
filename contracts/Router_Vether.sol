@@ -36,6 +36,7 @@ interface iUTILS {
 interface iDAO {
     function ROUTER() external view returns(address);
     function UTILS() external view returns(iUTILS);
+    function FUNDS_CAP() external view returns(uint);
 }
 
 // SafeMath
@@ -405,6 +406,7 @@ contract Router_Vether {
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         totalStaked += _actualInputBase;
         stakeTx += 1;
+        require(totalStaked <= DAO.FUNDS_CAP(), "Must be less than Funds Cap");
         units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
         emit Staked(member, _actualInputBase, _actualInputToken, units);
         return units;

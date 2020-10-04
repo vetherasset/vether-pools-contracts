@@ -89,6 +89,8 @@ contract Utils_Vether {
     address public DEPLOYER;
     iDAO public DAO;
 
+    uint public one = 10**18;
+
     struct TokenDetails {
         string name;
         string symbol;
@@ -383,19 +385,40 @@ contract Utils_Vether {
     function  calcSwapInputFee(uint x, uint X) public pure returns (uint output){
         // slip = (x * x) / (x + X)
         uint numerator = x.mul(x);
-        uint denominator = x.add(X));
+        uint denominator = x.add(X);
         return numerator.div(denominator);
     }
 
-    function calcStakeUnits(uint b, uint B, uint t, uint T) public pure returns (uint units){
-        // units = ((T + B) * (t * B + T * b))/(4 * T * B)
-        // (part1 * (part2 + part3)) / part4
-        uint part1 = T.add(B);
-        uint part2 = t.mul(B);
-        uint part3 = T.mul(b);
-        uint numerator = part1.mul((part2.add(part3)));
-        uint part4 = 4 * (T.mul(B));
-        return numerator.div(part4);
+    function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) public view returns (uint units){
+        if(P == 0){
+            return b;
+        } else {
+            // units = ((P (t B + T b))/(2 T B)) * slipAdjustment
+            // P * (part1 + part2) / (part3) * slipAdjustment
+            uint slipAdjustment = getSlipAdustment(b, B, t, T);
+            uint part1 = t.mul(B);
+            uint part2 = T.mul(b);
+            uint part3 = T.mul(B).mul(2);
+            uint _units = (P.mul(part1.add(part2))).div(part3);
+            return _units.mul(slipAdjustment).div(one);  // Divide by 10**18
+        }
+    }
+
+    function getSlipAdustment(uint b, uint B, uint t, uint T) public view returns (uint slipAdjustment){
+        // slipAdjustment = (1 - ABS((B t - b T)/((2 b + B) (t + T))))
+        // 1 - ABS(part1 - part2)/(part3 * part4))
+        uint part1 = B.mul(t);
+        uint part2 = b.mul(T);
+        uint part3 = b.mul(2).add(B);
+        uint part4 = t.add(T);
+        uint numerator;
+        if(part1 > part2){
+            numerator = part1.sub(part2);
+        } else {
+            numerator = part2.sub(part1);
+        }
+        uint denominator = part3.mul(part4);
+        return one.sub((numerator.mul(one)).div(denominator)); // Multiply by 10**18
     }
 
     function calcAsymmetricShare(uint u, uint U, uint A) public pure returns (uint share){

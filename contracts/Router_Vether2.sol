@@ -24,7 +24,7 @@ interface iUTILS {
     function calcShare(uint part, uint total, uint amount) external pure returns (uint share);
     function calcSwapOutput(uint x, uint X, uint Y) external pure returns (uint output);
     function calcSwapFee(uint x, uint X, uint Y) external pure returns (uint output);
-    function calcStakeUnits(uint a, uint A, uint v, uint S) external pure returns (uint units);
+    function calcStakeUnits(uint b, uint B, uint t, uint T, uint P) external pure returns (uint units);
     // function calcAsymmetricShare(uint s, uint T, uint A) external pure returns (uint share);
     // function getPoolAge(address token) external view returns(uint age);
     function getPoolShare(address token, uint units) external view returns(uint baseAmt, uint tokenAmt);
@@ -122,7 +122,7 @@ contract Pool_Vether is iERC20 {
         DAO = _dao;
 
         string memory poolName = "VetherPoolV1-";
-        string memory poolSymbol = "SVPT1-";
+        string memory poolSymbol = "VPT1-";
 
         if(_token == address(0)){
             _name = string(abi.encodePacked(poolName, "Ethereum"));
@@ -415,10 +415,11 @@ contract Router_Vether {
 
     function _handleStake(address payable pool, uint _baseAmt, uint _tokenAmt, address _member) internal returns (uint _units) {
         Pool_Vether(pool)._checkApprovals();
-        uint _S = Pool_Vether(pool).baseAmt().add(_baseAmt);
-        uint _A = Pool_Vether(pool).tokenAmt().add(_tokenAmt);
+        uint _B = Pool_Vether(pool).baseAmt();
+        uint _T = Pool_Vether(pool).tokenAmt();
+        uint _P = Pool_Vether(pool).totalSupply();
         Pool_Vether(pool)._incrementPoolBalances(_baseAmt, _tokenAmt);                                                  
-        _units = _DAO().UTILS().calcStakeUnits(_tokenAmt, _A, _baseAmt, _S);  
+        _units = _DAO().UTILS().calcStakeUnits(_baseAmt, _B, _tokenAmt, _T, _P);  
         Pool_Vether(pool)._mint(_member, _units);
         return _units;
     }

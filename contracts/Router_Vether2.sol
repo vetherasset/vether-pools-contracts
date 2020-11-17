@@ -406,7 +406,7 @@ contract Router_Vether {
         uint _actualInputBase = _handleTransferIn(BASE, inputBase, pool);
         totalStaked += _actualInputBase;
         stakeTx += 1;
-        require(totalStaked <= DAO.FUNDS_CAP(), "Must be less than Funds Cap");
+        // require(totalStaked <= DAO.FUNDS_CAP(), "Must be less than Funds Cap");
         units = _handleStake(pool, _actualInputBase, _actualInputToken, member);
         emit Staked(member, _actualInputBase, _actualInputToken, units);
         return units;
@@ -440,7 +440,7 @@ contract Router_Vether {
         address payable pool = getPool(token);
         address payable member = msg.sender;
         (uint _outputBase, uint _outputToken) = _DAO().UTILS().getPoolShare(token, units);
-        totalStaked = totalStaked.sub(_outputBase);
+        // totalStaked = totalStaked.sub(_outputBase);
         unstakeTx += 1;
         _handleUnstake(pool, units, _outputBase, _outputToken, member);
         emit Unstaked(member, _outputBase, _outputToken, units);
@@ -471,7 +471,10 @@ contract Router_Vether {
 
     function _handleUnstake(address payable pool, uint _units, uint _outputBase, uint _outputToken, address _member) internal returns (bool success) {
         Pool_Vether(pool)._checkApprovals();
-        Pool_Vether(pool)._decrementPoolBalances(_outputBase, _outputToken);
+        // Pool_Vether(pool)._decrementPoolBalances(_outputBase, _outputToken);
+        uint _baseAmt = Pool_Vether(pool).baseAmt().sub(_outputBase);
+        uint _tokenAmt = Pool_Vether(pool).tokenAmt().sub(_outputToken); 
+        Pool_Vether(pool)._setPoolAmounts(_baseAmt, _tokenAmt);
         Pool_Vether(pool).burnFrom(_member, _units);
         return true;
     } 
